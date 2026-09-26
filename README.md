@@ -39,8 +39,9 @@ makes the Core Guardian something to dodge rather than fight.
 
 ```
 index.html                 the page
+intro/                     Hallucinated Games studio ident (vendored)
 src/                       game modules (assets, input, world, player,
-                           entities, fx, hud, main)
+                           entities, fx, hud, title, main)
 art/<category>/            raw generated sheets, as downloaded
 art/game/                  the shipping bundle: cut, normalized, downsampled
 art/atlas.json             every sliced frame's rect in its source sheet
@@ -73,3 +74,13 @@ The repo is a static site with nothing to build, so any static host works. On
 | Publish Directory | `.` |
 
 `index.html` sits at the repo root, so the game loads at the site root.
+
+## Studio ident
+
+`intro/hallucinated-intro.js` is vendored from `gameCentral/intro/` so this game
+stays a self-contained deploy; re-copy that file to take an update. It has to be
+started from a classic script at the top of `<body>`, not from the module: a
+module is deferred until the document has parsed and its imports have resolved,
+which would let the loading screen paint first. The promise goes on
+`window.__studioIntro` and `main.js` awaits it before revealing the title, so the
+art loads underneath the ident and the ident is never cut off.

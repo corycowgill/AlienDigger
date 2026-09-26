@@ -7,6 +7,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Alien Digger</title>
+<!-- Studio ident. Vendored from gameCentral/intro/hallucinated-intro.js so this
+     game stays a self-contained deploy; re-copy that file to take an update.
+     Plain script, not a module: it defines window.HallucinatedIntro. -->
+<script src="intro/hallucinated-intro.js"></script>
 <style>
   :root { --ink: #d7d2e0; --dim: #8c85a0; --trim: #2fd2e8; --panel: #161222; }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -79,6 +83,32 @@
 </style>
 </head>
 <body>
+
+<!-- Start the studio ident before anything else paints. This has to be a
+     classic script at the top of <body>, not the module below: a module is
+     deferred until the document has parsed and its imports have resolved, which
+     would let the loading screen show for a beat first. Body exists by here, so
+     the overlay can attach immediately. -->
+<script>
+  window.__studioIntro = (function () {
+    try {
+      var q = new URLSearchParams(location.search);
+      // ?dev boots the test hooks and would otherwise wait out the ident, with
+      // its overlay swallowing the first synthetic click.
+      if (q.has('dev') || q.has('nointro') || !window.HallucinatedIntro) {
+        return Promise.resolve();
+      }
+      return window.HallucinatedIntro.play({
+        skippable: true,
+        // A sting needs a prior user gesture; on a cold load there is none, so
+        // it would be dropped silently. Turn on if the ident ever moves behind
+        // a click-to-start.
+        sound: false,
+      }).catch(function () {});
+    } catch (e) { return Promise.resolve(); }
+  })();
+</script>
+
   <div id="wrap">
     <canvas id="screen" width="960" height="600"></canvas>
     <div id="help">

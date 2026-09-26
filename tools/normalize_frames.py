@@ -42,6 +42,8 @@ TARGET = {
 }
 TILE_SHEET = "alien_digger_03_terrain_tiles"
 TILE_SIZE = 32
+UI_SHEET = "alien_digger_09_ui_kit"
+LOGO_HEIGHT = 200      # the title plate, for the start screen
 BG_SHEET = "alien_digger_10_backgrounds"
 BG_HEIGHT = 180        # parallax strips only ever draw scaled, so cap the height
 
@@ -155,6 +157,28 @@ def main():
         tile_files.append(f"game/{TILE_SHEET}/{name}")
     out_atlas[TILE_SHEET] = {"tiles": tile_files, "size": TILE_SIZE}
     print(f"  {TILE_SHEET}: {len(tile_files)} tiles at {TILE_SIZE}x{TILE_SIZE}")
+
+    # the title logo is the leftmost element of the UI kit's top row
+    ui = atlas[UI_SHEET]
+    top = min(ui["frames"], key=lambda f: (f["rect"]["y"], f["rect"]["x"]))
+    src = Image.open(ART / ui["source"]).convert("RGBA")
+    r = top["rect"]
+    band = src.crop((r["x"], r["y"], r["x"] + r["w"], r["y"] + r["h"]))
+    alpha = band.getchannel("A").load()
+    col = [sum(1 for y in range(band.height) if alpha[x, y] > ALPHA_CUT)
+           for x in range(band.width)]
+    # There is no blank gutter after the logo: its rubble runs into the panels'
+    # shadows and the emptiest column is still ~12% ink. So cut at the deepest
+    # valley in the band's left half rather than looking for a clean break.
+    lo, hi = int(band.width * 0.20), int(band.width * 0.55)
+    end = min(range(lo, hi), key=lambda x: col[x])
+    logo = band.crop((0, 0, end, band.height))
+    logo = logo.crop(logo.getbbox())
+    dest = OUT / UI_SHEET
+    dest.mkdir(parents=True, exist_ok=True)
+    finish(logo, round(LOGO_HEIGHT * logo.width / logo.height)).save(dest / "logo.png")
+    out_atlas[UI_SHEET] = {"logo": f"game/{UI_SHEET}/logo.png"}
+    print(f"  {UI_SHEET}: logo cut at {end}px wide")
 
     # parallax strips come along so that art/game/ is the whole shipping bundle
     bg = atlas[BG_SHEET]

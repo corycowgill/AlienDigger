@@ -386,6 +386,9 @@
     ],
     "size": 32
   },
+  "alien_digger_09_ui_kit": {
+    "logo": "game/alien_digger_09_ui_kit/logo.png"
+  },
   "alien_digger_10_backgrounds": {
     "strips": [
       "game/alien_digger_10_backgrounds/bg_surface.png",

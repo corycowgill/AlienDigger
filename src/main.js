@@ -8,6 +8,7 @@ import { createPlayer, updatePlayer, damage, MAX_HULL, MAX_FUEL } from './player
 import { populate, updateAliens, updateHazards, updatePickups, ramAliens } from './entities.js';
 import { createFx } from './fx.js';
 import { drawHud, drawBanner } from './hud.js';
+import { createTitle } from './title.js';
 
 const canvas = document.getElementById('screen');
 const ctx = canvas.getContext('2d');
@@ -40,10 +41,19 @@ const boot = document.getElementById('boot');
 const assets = await loadAssets((done, total) => {
   boot.textContent = `loading art... ${done}/${total}`;
 });
+// Hold the title until the studio ident has finished, so it is never cut off.
+// It was started at the top of <body> and ran while the art loaded, so on a
+// warm cache this usually resolves immediately.
+await (window.__studioIntro || Promise.resolve());
 boot.remove();
 
 const input = createInput();
 const fx = createFx(assets);
+const title = createTitle(assets, COARSE);
+
+// 'title' until the viewer starts, then 'playing'. ?dev skips straight in so
+// the test hooks do not have to clear the screen first.
+let screen = new URLSearchParams(location.search).has('dev') ? 'playing' : 'title';
 
 let world, player, aliens, hazards, pickups, state, cam;
 
@@ -189,6 +199,15 @@ function nearestSocket() {
 }
 
 function update(dt) {
+  if (screen === 'title') {
+    title.update(dt);
+    if (title.wantsStart(input)) {
+      screen = 'playing';
+      reset();
+    }
+    return;
+  }
+
   if (input.tapped('restart')) { reset(); return; }
   if (state.over) return;
 
@@ -260,6 +279,11 @@ function update(dt) {
 function render() {
   ctx.fillStyle = '#0d0a14';
   ctx.fillRect(0, 0, CW, CH);
+
+  if (screen === 'title') {
+    title.draw(ctx, CW, CH, VIEW_TOP);
+    return;
+  }
 
   ctx.save();
   ctx.beginPath();

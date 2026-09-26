@@ -14,6 +14,7 @@ const SHEETS = {
 };
 const TILES = 'alien_digger_03_terrain_tiles';
 const BG_SHEET = 'alien_digger_10_backgrounds';
+const UI_SHEET = 'alien_digger_09_ui_kit';
 
 const BACKGROUNDS = ['surface', 'upper_caverns', 'crystal_depths', 'magma_core'];
 
@@ -54,6 +55,9 @@ export async function loadAssets(onProgress) {
     jobs.push(load(ART + file).then((img) => { bg[name] = img; }));
   });
 
+  let logo = null;
+  jobs.push(load(ART + atlas[UI_SHEET].logo).then((img) => { logo = img; }));
+
   let done = 0;
   const total = jobs.length;
   await Promise.all(jobs.map((p) => p.then(() => onProgress?.(++done, total))));
@@ -61,6 +65,7 @@ export async function loadAssets(onProgress) {
   return {
     anim,
     bg,
+    get logo() { return logo; },
     backgrounds: BACKGROUNDS,
     tiles,
     tileCols,

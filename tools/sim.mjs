@@ -14,6 +14,7 @@ import { populate, updateAliens, updateHazards, updatePickups, ramAliens } from 
 
 const DT = 1 / 60;
 const MAX_SECONDS = 1200;
+const ESCAPE_BUDGET = 60;   // must track state.escapeLeft in main.js
 
 const noFx = { spawn() {} };
 
@@ -31,11 +32,11 @@ function scriptedInput() {
   };
 }
 
-// Where is the nearest untaken fuel pickup worth detouring for?
-function nearestFuel(pickups, p, radius) {
+// Where is the nearest untaken pickup of a kind worth detouring for?
+function nearestPickup(pickups, p, radius, want) {
   let best = null, bestD = Infinity;
   for (const u of pickups) {
-    if (u.taken || u.kind.kind !== 'fuel') continue;
+    if (u.taken || u.kind.kind !== want) continue;
     if (u.y < p.ty) continue;                    // never backtrack upward for fuel
     const d = Math.abs(u.x - p.tx) + Math.abs(u.y - p.ty);
     if (d < bestD && d <= radius) { best = u; bestD = d; }
@@ -54,6 +55,7 @@ function run(seed, policy) {
   let t = 0, phase = 'descend';
   let fuelOuts = 0, hits = 0, deepest = 0;
   let escapeStart = null, dryTime = 0, dryInvulnTime = 0, blockedHits = 0;
+  let alienHits = 0, hazHits = 0, alienDmg = 0, hazDmg = 0, chamberHits = 0;
 
   while (t < MAX_SECONDS) {
     // ---- policy picks a direction
@@ -63,12 +65,40 @@ function run(seed, policy) {
         // Detour for fuel when the tank is low, then come back to the shaft
         // column. A player who wanders leaves no straight way home, and the
         // escape timer starts the moment the third charge goes in.
-        const u = player.fuel < 55 ? nearestFuel(pickups, player, 8) : null;
+        // A real player goes for the repair kit when the hull is low, not just
+        // for fuel -- without that the bot walks into every fight at whatever
+        // health it happens to have.
+        const u = player.hull < 55 ? nearestPickup(pickups, player, 8, 'repair')
+                : player.fuel < 55 ? nearestPickup(pickups, player, 8, 'fuel')
+                : null;
         if (u && u.x !== player.tx) dir = u.x < player.tx ? 'left' : 'right';
         else if (!u && player.tx !== shaftX) dir = player.tx < shaftX ? 'right' : 'left';
       }
       if (player.ty >= CORE_TOP + 7) { phase = 'plant'; dir = null; }
     } else if (phase === 'plant') {
+      // The Guardian gates the charges, so it has to be rammed down first.
+      const boss = aliens.find((a) => a.boss && a.hp > 0);
+      if (boss) {
+        if (Math.abs(boss.x - player.tx) > 0) dir = boss.x < player.tx ? 'left' : 'right';
+        else if (Math.abs(boss.y - player.ty) > 0) dir = boss.y < player.ty ? 'up' : 'down';
+        else dir = 'down';
+        input.set(dir);
+        const fb = player.fuel;
+        updatePlayer(player, world, input, DT, noFx);
+        if (fb > 0 && player.fuel <= 0) fuelOuts++;
+        updateAliens(aliens, world, player, DT, (a) => {
+          if (a.hp <= 0) return;
+          if (damage(player, a.kind.dmg, noFx)) { hits++; alienHits++; alienDmg += a.kind.dmg; if (player.ty > CORE_TOP) chamberHits++; } else blockedHits++;
+        });
+        ramAliens(aliens, player, DT, () => {});
+        updatePickups(pickups, player, (u) => {
+          if (u.kind.kind === 'fuel') player.fuel = Math.min(MAX_FUEL, player.fuel + u.kind.amount);
+          else player.hull = Math.min(MAX_HULL, player.hull + u.kind.amount);
+        });
+        if (player.dead) break;
+        t += DT;
+        continue;
+      }
       const socket = world.chargeSockets.find((s) => !s.planted);
       if (!socket) { phase = 'escape'; dir = 'up'; }
       else if (Math.abs(socket.x - player.tx) > 1) {
@@ -99,11 +129,11 @@ function run(seed, policy) {
 
     updateAliens(aliens, world, player, DT, (a) => {
       if (a.hp <= 0) return;
-      if (damage(player, a.kind.dmg, noFx)) hits++; else blockedHits++;
+      if (damage(player, a.kind.dmg, noFx)) { hits++; alienHits++; alienDmg += a.kind.dmg; if (player.ty > CORE_TOP) chamberHits++; } else blockedHits++;
     });
     ramAliens(aliens, player, DT, () => {});
     updateHazards(hazards, player, DT, (h) => {
-      if (damage(player, h.kind.dmg, noFx)) hits++; else blockedHits++;
+      if (damage(player, h.kind.dmg, noFx)) { hits++; hazHits++; hazDmg += h.kind.dmg; if (player.ty > CORE_TOP) chamberHits++; } else blockedHits++;
     });
     updatePickups(pickups, player, (u) => {
       if (u.kind.kind === 'fuel') player.fuel = Math.min(MAX_FUEL, player.fuel + u.kind.amount);
@@ -117,7 +147,7 @@ function run(seed, policy) {
     if (phase === 'escape') {
       const spent = t - escapeStart;
       if (player.ty <= 3) { log.escaped = true; log.escapeSecs = +spent.toFixed(1); break; }
-      if (spent > 90) { log.escapeSecs = +spent.toFixed(1); log.tooSlow = true; break; }
+      if (spent > ESCAPE_BUDGET) { log.escapeSecs = +spent.toFixed(1); log.tooSlow = true; break; }
     }
     t += DT;
   }
@@ -133,6 +163,7 @@ function run(seed, policy) {
     fuelOuts,
     hits,
     blockedHits,
+    alienHits, hazHits, alienDmg, hazDmg, chamberHits,
     dryTime: +dryTime.toFixed(1),
     dryInvulnPct: dryTime > 0 ? Math.round(100 * dryInvulnTime / dryTime) : 0,
     coreDepth: CORE_TOP + 7,
@@ -183,10 +214,12 @@ for (const policy of ['beeline', 'greedy']) {
   console.log(`  avg hull at end: ${avg((r) => r.hull)}   ran dry: ${results.filter((r) => r.fuelOuts).length}/${runs}`);
   console.log(`  avg seconds at zero fuel: ${avg((r) => r.dryTime)}   of which invulnerable: ${avg((r) => r.dryInvulnPct)}%`);
   console.log(`  avg contacts blocked by i-frames: ${avg((r) => r.blockedHits)}`);
+  console.log(`  damage split -> aliens: ${avg((r) => r.alienHits)} hits / ${avg((r) => r.alienDmg)} hull   hazards: ${avg((r) => r.hazHits)} hits / ${avg((r) => r.hazDmg)} hull`);
+  console.log(`  hits taken inside the core chamber: ${avg((r) => r.chamberHits)}`);
   const esc = results.filter((r) => r.escapeSecs != null);
   if (esc.length) {
     const secs = esc.map((r) => r.escapeSecs);
-    console.log(`  escape climb: avg ${(secs.reduce((a, c) => a + c, 0) / secs.length).toFixed(1)}s  max ${Math.max(...secs)}s  of 90s budget   timed out: ${results.filter((r) => r.tooSlow).length}/${runs}`);
+    console.log(`  escape climb: avg ${(secs.reduce((a, c) => a + c, 0) / secs.length).toFixed(1)}s  max ${Math.max(...secs)}s  of ${ESCAPE_BUDGET}s budget   timed out: ${results.filter((r) => r.tooSlow).length}/${runs}`);
   }
   const sample = results.slice(0, 5).map((r) => `d${r.deepest}/${r.dead ? 'dead' : r.escaped ? 'WON' : 'stuck'}`).join('  ');
   console.log(`  sample: ${sample}\n`);

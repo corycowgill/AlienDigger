@@ -3,7 +3,7 @@
 
 import { loadAssets } from './assets.js';
 import { createInput } from './input.js';
-import { TILE, W, D, EMPTY, World, rng } from './world.js';
+import { TILE, W, D, CORE_TOP, EMPTY, World, rng } from './world.js';
 import { createPlayer, updatePlayer, damage, MAX_HULL, MAX_FUEL } from './player.js';
 import { populate, updateAliens, updateHazards, updatePickups, ramAliens } from './entities.js';
 import { createFx } from './fx.js';
@@ -65,7 +65,7 @@ function reset(seed = Date.now() & 0xffff) {
   fx.clear();
   cam = { x: 0, y: 0 };
   state = {
-    time: 0, escaping: false, escapeLeft: 90,
+    time: 0, escaping: false, escapeLeft: 60,
     over: null,           // 'dead' | 'won' | 'boom'
     banked: 0,
   };
@@ -194,7 +194,14 @@ function drawPlayer() {
 
 // ------------------------------------------------------------------ update
 
+function guardianAlive() {
+  const g = aliens.find((a) => a.boss);
+  return !!g && g.hp > 0;
+}
+
 function nearestSocket() {
+  // The Guardian has to go down first, or it is just scenery in an open room.
+  if (guardianAlive()) return null;
   return world.chargeSockets.find(
     (s) => !s.planted && Math.abs(s.x - player.tx) <= 1 && Math.abs(s.y - player.ty) <= 1,
   );
@@ -223,7 +230,7 @@ function update(dt) {
   ramAliens(aliens, player, dt, (a) => {
     fx.spawn(a.boss ? 'explosion' : 'debris', a.px + 16, a.py + 16, a.boss ? 2 : 1);
     if (a.boss) player.minerals[4] += 5;
-    else player.minerals[Math.min(2, Math.floor(a.y / 70))]++;
+    else player.minerals[Math.min(4, Math.floor(a.y / 45))]++;
   });
 
   updateHazards(hazards, player, dt, (h) => {
@@ -250,7 +257,7 @@ function update(dt) {
     fx.spawn('flash', socket.x * TILE + 16, socket.y * TILE + 16);
     if (player.planted === 3) {
       state.escaping = true;
-      state.escapeLeft = 90;
+      state.escapeLeft = 60;
     }
   }
 
@@ -263,6 +270,13 @@ function update(dt) {
       state.over = 'boom';
       fx.spawn('explosion', player.px + 16, player.py + 16, 3);
     }
+  }
+
+  // Starvation is otherwise invisible: the fuel bar sits empty and the hull
+  // drains with no cue that you crossed from low into bleeding.
+  if (player.fuel <= 0 && !player.dead && Math.floor(state.time * 3) % 2 === 0
+      && Math.floor((state.time - dt) * 3) % 2 !== 0) {
+    fx.spawn('sparks', player.px + 16, player.py + 16);
   }
 
   if (player.dead) state.over = 'dead';
@@ -300,13 +314,18 @@ function render() {
 
   drawHud(ctx, player, state, CW);
 
-  const socket = nearestSocket();
-  if (socket && player.charges > 0 && !state.over) {
-    ctx.fillStyle = '#39d7e8';
-    ctx.font = '13px ui-monospace, monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('[E] PLANT CHARGE', CW / 2, CH - 24);
-    ctx.textAlign = 'left';
+  if (!state.over && player.ty > CORE_TOP) {
+    const socket = nearestSocket();
+    let hint = null;
+    if (guardianAlive()) hint = 'THE CORE GUARDIAN BLOCKS THE CHARGES';
+    else if (socket && player.charges > 0) hint = '[E] PLANT CHARGE';
+    if (hint) {
+      ctx.fillStyle = guardianAlive() ? '#ff6b5b' : '#39d7e8';
+      ctx.font = '13px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(hint, CW / 2, CH - 24);
+      ctx.textAlign = 'left';
+    }
   }
 
   if (state.over === 'won') {
@@ -326,6 +345,9 @@ if (new URLSearchParams(location.search).has('dev')) {
     get player() { return player; },
     get world() { return world; },
     get state() { return state; },
+    get aliens() { return aliens; },
+    get hazards() { return hazards; },
+    get pickups() { return pickups; },
     // carve a clear shaft down to a depth and drop the drill into it
     warp(y) {
       for (let j = 3; j <= y; j++) world.tiles[world.idx(player.tx, j)] = EMPTY;

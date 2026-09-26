@@ -3,12 +3,18 @@
 
 import { TILE, W, D, CORE_TOP, EMPTY } from './world.js';
 
+// `from`/`to` bound the depth band a kind spawns in. Without `to`, nothing was
+// ever gated out, so at depth every kind stayed equally likely and a 6-damage
+// grubworm was as common in magma as a lurker -- the deep pool was diluted by
+// everything that came before it. HP is set so a kill costs more than one
+// invulnerability window: at 9 dmg/s of ramming a lurker takes ~1.7s, which is
+// three i-frames, so ramming it is a real decision against rerouting.
 export const ALIEN_KINDS = [
-  { row: 'grubworm', hp: 2, dmg: 6,  speed: 1.6, from: 8 },
-  { row: 'rockcrab', hp: 4, dmg: 10, speed: 1.1, from: 40 },
-  { row: 'spitter',  hp: 3, dmg: 12, speed: 1.3, from: 70 },
-  { row: 'swarmlet', hp: 1, dmg: 4,  speed: 3.0, from: 20 },
-  { row: 'lurker',   hp: 5, dmg: 16, speed: 2.1, from: 92 },
+  { row: 'grubworm', hp: 4,  dmg: 6,  speed: 1.6, from: 8,  to: 70 },
+  { row: 'rockcrab', hp: 8, dmg: 10, speed: 1.1, from: 40, to: 140 },
+  { row: 'spitter',  hp: 9,  dmg: 12, speed: 1.3, from: 70 },
+  { row: 'swarmlet', hp: 2,  dmg: 4,  speed: 3.0, from: 20, to: 95 },
+  { row: 'lurker',   hp: 15, dmg: 16, speed: 2.1, from: 92 },
 ];
 
 export const HAZARD_KINDS = [
@@ -61,7 +67,7 @@ export function populate(world, rand) {
       }
 
       if (rand() < 0.03) {
-        const pool = ALIEN_KINDS.filter((k) => y >= k.from);
+        const pool = ALIEN_KINDS.filter((k) => y >= k.from && y < (k.to ?? Infinity));
         if (pool.length) {
           const kind = pool[Math.floor(rand() * pool.length)];
           aliens.push({
@@ -88,10 +94,33 @@ export function populate(world, rand) {
   // directly on the middle socket before, which made that charge unplantable.
   const gx = Math.floor(W / 2);
   const gy = CORE_TOP + 4;
+  // It has to be killed before the charges will arm (see main.js), because a
+  // boss this slow in a room this open is otherwise just scenery you walk past.
+  // 24 hp at 9 dmg/s of ramming is ~2.7s, about five i-frames, so it costs
+  // roughly 45 hull -- losable if you arrive hurt, which is what the repair
+  // kits are for.
   aliens.push({
-    kind: { row: 'guardian', hp: 60, dmg: 22, speed: 1.2, boss: true },
-    x: gx, y: gy, hp: 60, t: 0, dx: 1,
+    kind: { row: 'guardian', hp: 24, dmg: 9, speed: 1.2, boss: true },
+    x: gx, y: gy, hp: 24, t: 0, dx: 1,
     px: gx * TILE, py: gy * TILE, boss: true,
+  });
+
+  // The chamber gets a hand-placed guard detail rather than the scatter rates
+  // used above. Running the cave rates over a room that is 100% open packed ~13
+  // aliens and ~15 hazards into the one arena the player cannot walk away from,
+  // and 63% of all damage in a run landed here. A designed layout keeps the
+  // climax a fight instead of a blender: one sentry short of each socket, and a
+  // hazard between them so the approach has to be picked.
+  const guard = ALIEN_KINDS.find((k) => k.row === 'spitter');
+  const deep = HAZARD_KINDS.find((k) => k.row === 'lavavent');
+  world.chargeSockets.forEach((sock, i) => {
+    aliens.push({
+      kind: guard, x: sock.x, y: sock.y - 4, hp: guard.hp, t: i,
+      dx: i % 2 ? 1 : -1, px: sock.x * TILE, py: (sock.y - 4) * TILE,
+    });
+    if (i < 2) {
+      hazards.push({ kind: deep, x: sock.x + 3, y: sock.y, t: i, cooldown: 0 });
+    }
   });
 
   // A guaranteed cache in the core chamber. Without it the descent drains the
@@ -113,7 +142,7 @@ export function updateAliens(aliens, world, player, dt, onHit) {
     if (!near) continue;
 
     // drift along open tunnels, turning at walls; chase when the drill is close
-    const chasing = Math.abs(a.x - player.tx) + Math.abs(a.y - player.ty) < 9;
+    const chasing = Math.abs(a.x - player.tx) + Math.abs(a.y - player.ty) < 4;
     const step = a.kind.speed * dt * (chasing ? 1.4 : 1) * 18;
 
     let tx = a.x, ty = a.y;
@@ -125,6 +154,14 @@ export function updateAliens(aliens, world, player, dt, onHit) {
       }
     } else {
       tx += a.dx;
+    }
+
+    if (world.solid(tx, ty) && chasing) {
+      // try the other axis before giving up, so an L-bend is navigable
+      const ax = a.x + Math.sign(player.tx - a.x);
+      const ay = a.y + Math.sign(player.ty - a.y);
+      if (tx !== a.x && !world.solid(a.x, ay)) { tx = a.x; ty = ay; }
+      else if (ty !== a.y && !world.solid(ax, a.y)) { tx = ax; ty = a.y; }
     }
 
     if (world.solid(tx, ty)) {
@@ -148,7 +185,7 @@ export function ramAliens(aliens, player, dt, onKill) {
   for (const a of aliens) {
     if (a.hp <= 0) continue;
     if (a.x !== player.tx || a.y !== player.ty) continue;
-    a.hp -= (player.moving || player.drilling ? 26 : 9) * dt;
+    a.hp -= (player.moving || player.drilling ? 14 : 0) * dt;
     if (a.hp <= 0) onKill(a);
   }
 }

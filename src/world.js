@@ -15,7 +15,7 @@ export const STRATA = [
   { name: 'sandstone', row: 2, hardness: 0.7,  depth: 48 },
   { name: 'rock',      row: 3, hardness: 1.0,  depth: 80 },
   { name: 'ice',       row: 4, hardness: 1.3,  depth: 110 },
-  { name: 'fungal',    row: 5, hardness: 1.1,  depth: 140 },
+  { name: 'fungal',    row: 5, hardness: 1.45, depth: 140 },
   { name: 'crystal',   row: 6, hardness: 1.7,  depth: 172 },
   { name: 'magma',     row: 7, hardness: 2.4,  depth: D },
 ];

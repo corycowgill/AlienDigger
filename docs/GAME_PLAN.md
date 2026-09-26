@@ -13,6 +13,13 @@ detonation. The blast shatters the planet and you harvest the precious minerals.
 5. **Escape** — timer flips to countdown, drill back up to the surface.
 6. **Payout** — planet detonates, minerals banked, spend at the Foundry, next planet.
 
+> **Status.** This is the design, not a description of the build. Not yet
+> implemented: heat, 8-directional drilling (the drill moves on 4), the Foundry
+> and its upgrades, and the Spitter's ranged acid (it melees). Minerals are
+> collected and scored on the win banner but have nothing to spend on yet, so
+> ore density is currently tuning nothing. Two of the five pickup art frames are
+> unused.
+
 ## Systems
 - **Digger**: 8-directional drill; drilling speed varies per material. Hull HP, fuel, heat.
 - **Fuel**: burns while drilling (fast) and idling (slow). Refuel from fuel cells / pods.

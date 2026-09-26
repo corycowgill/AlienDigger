@@ -8,7 +8,7 @@ export const ALIEN_KINDS = [
   { row: 'rockcrab', hp: 4, dmg: 10, speed: 1.1, from: 40 },
   { row: 'spitter',  hp: 3, dmg: 12, speed: 1.3, from: 70 },
   { row: 'swarmlet', hp: 1, dmg: 4,  speed: 3.0, from: 20 },
-  { row: 'lurker',   hp: 5, dmg: 16, speed: 2.1, from: 110 },
+  { row: 'lurker',   hp: 5, dmg: 16, speed: 2.1, from: 92 },
 ];
 
 export const HAZARD_KINDS = [
@@ -19,7 +19,7 @@ export const HAZARD_KINDS = [
   { row: 'boulder',      dmg: 14, from: 30 },
   { row: 'electricvein', dmg: 16, from: 100 },
   { row: 'spiketrap',    dmg: 13, from: 50 },
-  { row: 'voidpit',      dmg: 25, from: 150 },
+  { row: 'voidpit',      dmg: 25, from: 118 },
 ];
 
 // Index into the minerals sheet's "pickup" row.
@@ -28,6 +28,16 @@ export const PICKUPS = [
   { row: 1, kind: 'fuel', amount: 45 },
 ];
 
+// Rates for content buried inside solid rock, per tile. Everything used to
+// spawn only in caves, but a descent is mostly drilling through rock: a straight
+// dig met ~1 hazard and almost no fuel in 190 tiles, so the run was empty and
+// the tank could not be refilled without long detours. Burying some content
+// means drilling itself is where the run happens -- a fuel cache you break into,
+// a gas pocket you breach. Tuned so a straight descent meets roughly six
+// pickups, which is about what the 300-fuel column costs.
+const BURIED_PICKUP = 0.042;
+const BURIED_HAZARD = 0.012;
+
 export function populate(world, rand) {
   const aliens = [];
   const hazards = [];
@@ -35,7 +45,20 @@ export function populate(world, rand) {
 
   for (let y = 6; y < CORE_TOP; y++) {
     for (let x = 1; x < W - 1; x++) {
-      if (world.tiles[world.idx(x, y)] !== EMPTY) continue;
+      if (world.tiles[world.idx(x, y)] !== EMPTY) {
+        // Buried: inert until the drill breaks the tile open, since the player
+        // can only ever stand in a tile that has been dug out.
+        if (rand() < BURIED_PICKUP) {
+          pickups.push({ kind: rand() < 0.68 ? PICKUPS[1] : PICKUPS[0], x, y, taken: false });
+        } else if (rand() < BURIED_HAZARD) {
+          const pool = HAZARD_KINDS.filter((k) => y >= k.from);
+          if (pool.length) {
+            const kind = pool[Math.floor(rand() * pool.length)];
+            hazards.push({ kind, x, y, t: rand() * 3, cooldown: 0 });
+          }
+        }
+        continue;
+      }
 
       if (rand() < 0.03) {
         const pool = ALIEN_KINDS.filter((k) => y >= k.from);
@@ -70,6 +93,15 @@ export function populate(world, rand) {
     x: gx, y: gy, hp: 60, t: 0, dx: 1,
     px: gx * TILE, py: gy * TILE, boss: true,
   });
+
+  // A guaranteed cache in the core chamber. Without it the descent drains the
+  // tank, the charges arm, and the climb out starts on empty with every pickup
+  // on the way up already taken -- so reaching the core was a death sentence
+  // rather than the turning point it should be. Planting is the point of no
+  // return, so this is where the run gets topped up for the run home.
+  for (const s of world.chargeSockets) {
+    pickups.push({ kind: PICKUPS[1], x: s.x, y: s.y - 2, taken: false });
+  }
 
   return { aliens, hazards, pickups };
 }

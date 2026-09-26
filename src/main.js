@@ -145,11 +145,13 @@ function drawSprite(img, px, py, box) {
 function drawEntities() {
   for (const h of hazards) {
     if (Math.abs(h.y - player.ty) > 22) continue;
+    if (world.solid(h.x, h.y)) continue;      // still buried
     drawSprite(frameOf(assets.anim.hazards[h.kind.row], h.t, 6),
                h.x * TILE, h.y * TILE, TILE);
   }
   for (const u of pickups) {
     if (u.taken || Math.abs(u.y - player.ty) > 22) continue;
+    if (world.solid(u.x, u.y)) continue;      // still buried
     const frames = assets.anim.minerals.pickup;
     drawSprite(frames && frames[u.kind.row], u.x * TILE, u.y * TILE, TILE * 0.8);
   }
@@ -333,6 +335,15 @@ if (new URLSearchParams(location.search).has('dev')) {
       cam.y = player.py - CH / 2;
     },
     refuel() { player.fuel = MAX_FUEL; player.hull = MAX_HULL; },
+    // Step the game by hand. requestAnimationFrame is throttled to zero in a
+    // background tab, so without this a harness cannot drive a run unless the
+    // window happens to be foregrounded.
+    tick(seconds, dt = 1 / 60) {
+      const steps = Math.round(seconds / dt);
+      for (let i = 0; i < steps; i++) { update(dt); render(); }
+      return { depth: player.ty, fuel: Math.round(player.fuel),
+               hull: Math.round(player.hull), dead: player.dead, over: state.over };
+    },
   };
 }
 

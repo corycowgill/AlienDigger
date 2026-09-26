@@ -86,9 +86,13 @@ export class World {
         const i = y * W + x;
         if (this.tiles[i] === EMPTY) continue;
         if (rand() > 0.045) continue;
-        const bias = y / D;
-        let tier = Math.floor(rand() * 2 + bias * 4);
-        this.ore[i] = Math.min(4, tier);
+        // Depth sets which tiers are available at all; the curve then makes the
+        // good ones rare within that. The old formula did the opposite -- it
+        // pushed the tier floor up with depth, so because most of the world is
+        // deep, the top tiers ended up the most abundant ore in the game and
+        // copper the rarest, inverting both the rarity ladder and the scoring.
+        const cap = Math.min(4, Math.floor((y / D) * 6));
+        this.ore[i] = Math.floor(Math.pow(rand(), 2.2) * (cap + 1));
       }
     }
 

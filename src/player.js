@@ -11,6 +11,7 @@ const DRILL_RATE = 2.2;     // hardness units per second
 const FUEL_DRILL = 2.6;     // per second while drilling
 const FUEL_MOVE = 1.1;      // per second while moving
 const FUEL_IDLE = 0.15;
+const FUEL_STARVE_DPS = 6;  // an empty tank kills a full hull in ~17s
 
 export function createPlayer() {
   return {
@@ -104,7 +105,16 @@ export function updatePlayer(p, world, input, dt, fx) {
     p.moving = { fromX: p.tx, fromY: p.ty, toX: nx, toY: ny, t: 0 };
   }
 
-  if (p.fuel <= 0) { p.fuel = 0; damage(p, 8 * dt, null); }
+  // Fuel starvation drains the hull directly, deliberately bypassing the i-frame
+  // system. Routing it through damage() made it self-gating: one ~0.13 hit per
+  // 0.6s, about 0.22/sec, so an empty tank needed ~450s to kill. Worse, every
+  // one of those hits refreshed invuln, so running dry left the drill almost
+  // immune to aliens and hazards -- the opposite of the pressure it should be.
+  if (p.fuel <= 0) {
+    p.fuel = 0;
+    p.hull -= FUEL_STARVE_DPS * dt;
+    if (p.hull <= 0) { p.hull = 0; p.dead = true; }
+  }
 }
 
 export function damage(p, amount, fx) {

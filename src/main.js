@@ -5,7 +5,7 @@ import { loadAssets } from './assets.js';
 import { createInput } from './input.js';
 import { TILE, W, D, CORE_TOP, EMPTY, World, rng } from './world.js';
 import { createPlayer, updatePlayer, damage, MAX_HULL, MAX_FUEL } from './player.js';
-import { populate, updateAliens, updateHazards, updatePickups, ramAliens } from './entities.js';
+import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard } from './entities.js';
 import { createFx } from './fx.js';
 import { drawHud, drawBanner } from './hud.js';
 import { createTitle } from './title.js';
@@ -14,6 +14,7 @@ const canvas = document.getElementById('screen');
 const ctx = canvas.getContext('2d');
 const CW = canvas.width, CH = canvas.height;
 const VIEW_TOP = 63;                 // HUD height
+const SCANNER = 7;                   // tiles: how far buried caches read through rock
 
 ctx.imageSmoothingEnabled = false;
 
@@ -55,13 +56,14 @@ const title = createTitle(assets, COARSE);
 // the test hooks do not have to clear the screen first.
 let screen = new URLSearchParams(location.search).has('dev') ? 'playing' : 'title';
 
-let world, player, aliens, hazards, pickups, state, cam;
+let world, player, aliens, hazards, pickups, state, cam, hazardAt;
 
 function reset(seed = Date.now() & 0xffff) {
   world = new World(seed);
   const rand = rng(seed ^ 0x9e37);
   player = createPlayer();
   ({ aliens, hazards, pickups } = populate(world, rand));
+  hazardAt = new Set(hazards.map((h) => h.y * W + h.x));
   fx.clear();
   cam = { x: 0, y: 0 };
   state = {
@@ -76,9 +78,9 @@ reset();
 
 function bgFor(depth) {
   const list = assets.backgrounds;
-  if (depth < 20) return assets.bg[list[0]];
-  if (depth < 90) return assets.bg[list[1]];
-  if (depth < 150) return assets.bg[list[2]];
+  if (depth < 24) return assets.bg[list[0]];     // through dirt
+  if (depth < 110) return assets.bg[list[1]];    // through rock
+  if (depth < 172) return assets.bg[list[2]];    // ice, fungal, crystal
   return assets.bg[list[3]];
 }
 
@@ -122,7 +124,10 @@ function drawTerrain() {
       // crack the tile the drill is currently grinding
       if (player.drillTarget && player.drillTarget.x === x && player.drillTarget.y === y) {
         const f = player.drillProgress / Math.max(0.01, world.hardness(x, y));
-        ctx.fillStyle = 'rgba(255,190,80,' + (0.12 + f * 0.35) + ')';
+        const warn = f > 0.7 && hazardAt.has(y * W + x);
+        ctx.fillStyle = warn
+          ? 'rgba(255,60,40,' + (0.25 + Math.sin(state.time * 22) * 0.18) + ')'
+          : 'rgba(255,190,80,' + (0.12 + f * 0.35) + ')';
         ctx.fillRect(sx, sy, TILE, TILE);
       }
     }
@@ -151,9 +156,12 @@ function drawEntities() {
   }
   for (const u of pickups) {
     if (u.taken || Math.abs(u.y - player.ty) > 22) continue;
-    if (world.solid(u.x, u.y)) continue;      // still buried
+    const buried = world.solid(u.x, u.y);
+    if (buried && Math.abs(u.x - player.tx) + Math.abs(u.y - player.ty) > SCANNER) continue;
     const frames = assets.anim.minerals.pickup;
+    if (buried) ctx.globalAlpha = 0.45;
     drawSprite(frames && frames[u.kind.row], u.x * TILE, u.y * TILE, TILE * 0.8);
+    ctx.globalAlpha = 1;
   }
   for (const s of world.chargeSockets) {
     const row = s.planted ? (state.escaping ? 'armed' : 'planted') : 'coreprop';
@@ -233,12 +241,7 @@ function update(dt) {
     else player.minerals[Math.min(4, Math.floor(a.y / 45))]++;
   });
 
-  updateHazards(hazards, player, dt, (h) => {
-    if (damage(player, h.kind.dmg, fx)) {
-      fx.spawn(h.kind.row === 'acidpool' ? 'acidsplash' : 'flash',
-               player.px + 16, player.py + 16);
-    }
-  });
+  updateHazards(hazards, player, dt, (h) => applyHazard(h, player, world, fx));
 
   updatePickups(pickups, player, (u) => {
     if (u.kind.kind === 'fuel') {

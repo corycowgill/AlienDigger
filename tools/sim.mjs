@@ -10,7 +10,7 @@
 
 import { TILE, W, D, CORE_TOP, EMPTY, World, strataAt, rng } from '../src/world.js';
 import { createPlayer, updatePlayer, damage, MAX_HULL, MAX_FUEL } from '../src/player.js';
-import { populate, updateAliens, updateHazards, updatePickups, ramAliens } from '../src/entities.js';
+import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard } from '../src/entities.js';
 
 const DT = 1 / 60;
 const MAX_SECONDS = 1200;
@@ -133,7 +133,9 @@ function run(seed, policy) {
     });
     ramAliens(aliens, player, DT, () => {});
     updateHazards(hazards, player, DT, (h) => {
-      if (damage(player, h.kind.dmg, noFx)) { hits++; hazHits++; hazDmg += h.kind.dmg; if (player.ty > CORE_TOP) chamberHits++; } else blockedHits++;
+      const r = applyHazard(h, player, world, noFx);
+      if (typeof r === 'number') { hits++; hazHits++; hazDmg += r; if (player.ty > CORE_TOP) chamberHits++; }
+      else if (r === null) blockedHits++;
     });
     updatePickups(pickups, player, (u) => {
       if (u.kind.kind === 'fuel') player.fuel = Math.min(MAX_FUEL, player.fuel + u.kind.amount);

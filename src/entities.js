@@ -2,6 +2,7 @@
 // updates when it is near the camera, so depth costs nothing until you get there.
 
 import { TILE, W, D, CORE_TOP, EMPTY } from './world.js';
+import { damage } from './player.js';
 
 // `from`/`to` bound the depth band a kind spawns in. Without `to`, nothing was
 // ever gated out, so at depth every kind stayed equally likely and a 6-damage
@@ -210,4 +211,37 @@ export function updatePickups(pickups, player, onTake) {
       onTake(p);
     }
   }
+}
+
+// Eight hazard sprites used to share one behaviour -- position match, fixed
+// damage, 1.1s cooldown -- so a boulder never fell and a crusher never crushed;
+// they were a spike trap with a different integer. That matters more now they
+// are buried and cannot always be walked around, because behaviour is the only
+// thing that makes them read as different threats.
+export function applyHazard(h, player, world, fx) {
+  const row = h.kind.row;
+
+  if (row === 'acidpool') {
+    // eats the tank rather than the hull, which hurts most when you are deep
+    player.fuel = Math.max(0, player.fuel - 26);
+    fx.spawn('acidsplash', player.px + 16, player.py + 16);
+    return 'fuel';
+  }
+
+  // a crusher catches you mid-grind, when you cannot move out of the way
+  const amount = row === 'crusher' && player.drilling ? h.kind.dmg * 2 : h.kind.dmg;
+  if (!damage(player, amount, fx)) return null;
+  fx.spawn(row === 'electricvein' ? 'sparks' : 'flash', player.px + 16, player.py + 16);
+
+  // boulders throw you back up the shaft; void pits drop you further down it
+  const shove = row === 'boulder' ? -1 : row === 'voidpit' ? 1 : 0;
+  if (shove && !player.moving && !world.solid(player.tx, player.ty + shove)) {
+    player.ty += shove;
+    player.py = player.ty * TILE;
+    fx.spawn('dustpuff', player.px + 16, player.py + 16);
+  }
+
+  // gas keeps burning for a beat instead of hitting once
+  if (row === 'gaspocket') h.cooldown = 0.45;
+  return amount;
 }

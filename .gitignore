@@ -1,0 +1,7 @@
+# Intermediate slicer output. Regenerate with:
+#   python tools/slice_sheets.py && python tools/slice_opaque.py
+art/sliced/
+
+__pycache__/
+*.pyc
+.DS_Store

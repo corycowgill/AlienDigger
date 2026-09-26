@@ -1,0 +1,144 @@
+// Aliens, hazards and pickups. Everything lives on the tile grid and only
+// updates when it is near the camera, so depth costs nothing until you get there.
+
+import { TILE, W, D, CORE_TOP, EMPTY } from './world.js';
+
+export const ALIEN_KINDS = [
+  { row: 'grubworm', hp: 2, dmg: 6,  speed: 1.6, from: 8 },
+  { row: 'rockcrab', hp: 4, dmg: 10, speed: 1.1, from: 40 },
+  { row: 'spitter',  hp: 3, dmg: 12, speed: 1.3, from: 70 },
+  { row: 'swarmlet', hp: 1, dmg: 4,  speed: 3.0, from: 20 },
+  { row: 'lurker',   hp: 5, dmg: 16, speed: 2.1, from: 110 },
+];
+
+export const HAZARD_KINDS = [
+  { row: 'lavavent',     dmg: 18, from: 60 },
+  { row: 'gaspocket',    dmg: 10, from: 20 },
+  { row: 'acidpool',     dmg: 12, from: 40 },
+  { row: 'crusher',      dmg: 22, from: 90 },
+  { row: 'boulder',      dmg: 14, from: 30 },
+  { row: 'electricvein', dmg: 16, from: 100 },
+  { row: 'spiketrap',    dmg: 13, from: 50 },
+  { row: 'voidpit',      dmg: 25, from: 150 },
+];
+
+// Index into the minerals sheet's "pickup" row.
+export const PICKUPS = [
+  { row: 0, kind: 'repair', amount: 34 },
+  { row: 1, kind: 'fuel', amount: 45 },
+];
+
+export function populate(world, rand) {
+  const aliens = [];
+  const hazards = [];
+  const pickups = [];
+
+  for (let y = 6; y < CORE_TOP; y++) {
+    for (let x = 1; x < W - 1; x++) {
+      if (world.tiles[world.idx(x, y)] !== EMPTY) continue;
+
+      if (rand() < 0.03) {
+        const pool = ALIEN_KINDS.filter((k) => y >= k.from);
+        if (pool.length) {
+          const kind = pool[Math.floor(rand() * pool.length)];
+          aliens.push({
+            kind, x, y, hp: kind.hp, t: rand() * 4,
+            dx: rand() < 0.5 ? -1 : 1, px: x * TILE, py: y * TILE,
+          });
+        }
+      } else if (rand() < 0.035) {
+        const pool = HAZARD_KINDS.filter((k) => y >= k.from);
+        if (pool.length) {
+          const kind = pool[Math.floor(rand() * pool.length)];
+          hazards.push({ kind, x, y, t: rand() * 3, cooldown: 0 });
+        }
+      } else if (rand() < 0.10) {
+        // fuel is the real clock, so cells have to be common enough that a
+        // careful descent can always reach the core
+        const kind = rand() < 0.68 ? PICKUPS[1] : PICKUPS[0];
+        pickups.push({ kind, x, y, taken: false });
+      }
+    }
+  }
+
+  // The Core Guardian patrols the chamber a few tiles above the sockets. It sat
+  // directly on the middle socket before, which made that charge unplantable.
+  const gx = Math.floor(W / 2);
+  const gy = CORE_TOP + 4;
+  aliens.push({
+    kind: { row: 'guardian', hp: 60, dmg: 22, speed: 1.2, boss: true },
+    x: gx, y: gy, hp: 60, t: 0, dx: 1,
+    px: gx * TILE, py: gy * TILE, boss: true,
+  });
+
+  return { aliens, hazards, pickups };
+}
+
+export function updateAliens(aliens, world, player, dt, onHit) {
+  for (const a of aliens) {
+    a.t += dt;
+    const near = Math.abs(a.y - player.ty) < 24;
+    if (!near) continue;
+
+    // drift along open tunnels, turning at walls; chase when the drill is close
+    const chasing = Math.abs(a.x - player.tx) + Math.abs(a.y - player.ty) < 9;
+    const step = a.kind.speed * dt * (chasing ? 1.4 : 1) * 18;
+
+    let tx = a.x, ty = a.y;
+    if (chasing) {
+      if (Math.abs(player.tx - a.x) > Math.abs(player.ty - a.y)) {
+        tx += Math.sign(player.tx - a.x);
+      } else {
+        ty += Math.sign(player.ty - a.y);
+      }
+    } else {
+      tx += a.dx;
+    }
+
+    if (world.solid(tx, ty)) {
+      a.dx = -a.dx;
+    } else {
+      const goalX = tx * TILE, goalY = ty * TILE;
+      a.px += Math.sign(goalX - a.px) * Math.min(step, Math.abs(goalX - a.px));
+      a.py += Math.sign(goalY - a.py) * Math.min(step, Math.abs(goalY - a.py));
+      if (Math.abs(a.px - goalX) < 1 && Math.abs(a.py - goalY) < 1) {
+        a.x = tx; a.y = ty; a.px = goalX; a.py = goalY;
+      }
+    }
+
+    if (a.x === player.tx && a.y === player.ty) onHit(a);
+  }
+}
+
+// The drill has no gun; ramming is the whole offence. Contact hurts both sides,
+// so small aliens clear out of the way and the boss stays something to dodge.
+export function ramAliens(aliens, player, dt, onKill) {
+  for (const a of aliens) {
+    if (a.hp <= 0) continue;
+    if (a.x !== player.tx || a.y !== player.ty) continue;
+    a.hp -= (player.moving || player.drilling ? 26 : 9) * dt;
+    if (a.hp <= 0) onKill(a);
+  }
+}
+
+export function updateHazards(hazards, player, dt, onHit) {
+  for (const h of hazards) {
+    h.t += dt;
+    h.cooldown -= dt;
+    if (Math.abs(h.y - player.ty) > 20) continue;
+    if (h.x === player.tx && h.y === player.ty && h.cooldown <= 0) {
+      h.cooldown = 1.1;
+      onHit(h);
+    }
+  }
+}
+
+export function updatePickups(pickups, player, onTake) {
+  for (const p of pickups) {
+    if (p.taken) continue;
+    if (p.x === player.tx && p.y === player.ty) {
+      p.taken = true;
+      onTake(p);
+    }
+  }
+}

@@ -145,7 +145,7 @@ function run(seed, policy) {
     if (player.fuel <= 0) { dryTime += DT; if (player.invuln > 0) dryInvulnTime += DT; }
 
     deepest = Math.max(deepest, player.ty);
-    if (player.dead) break;
+    if (player.dead) { log.deathFuel = Math.round(player.fuel); log.deathPhase = phase; log.deathDepth = player.ty; break; }
     if (phase === 'escape') {
       const spent = t - escapeStart;
       if (player.ty <= 3) { log.escaped = true; log.escapeSecs = +spent.toFixed(1); break; }
@@ -218,6 +218,15 @@ for (const policy of ['beeline', 'greedy']) {
   console.log(`  avg contacts blocked by i-frames: ${avg((r) => r.blockedHits)}`);
   console.log(`  damage split -> aliens: ${avg((r) => r.alienHits)} hits / ${avg((r) => r.alienDmg)} hull   hazards: ${avg((r) => r.hazHits)} hits / ${avg((r) => r.hazDmg)} hull`);
   console.log(`  hits taken inside the core chamber: ${avg((r) => r.chamberHits)}`);
+  const dead = results.filter((r) => r.dead);
+  if (dead.length) {
+    // A death with fuel still in the tank was chip damage, not a routing error.
+    const taxed = dead.filter((r) => r.deathFuel > 5).length;
+    const byPhase = {};
+    for (const r of dead) byPhase[r.deathPhase] = (byPhase[r.deathPhase] || 0) + 1;
+    console.log(`  deaths: ${dead.length}  with fuel left (chip damage): ${taxed}  dry (misrouted): ${dead.length - taxed}`);
+    console.log(`  deaths by phase: ${Object.entries(byPhase).map(([k, v]) => `${k} ${v}`).join('  ')}`);
+  }
   const esc = results.filter((r) => r.escapeSecs != null);
   if (esc.length) {
     const secs = esc.map((r) => r.escapeSecs);

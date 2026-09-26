@@ -4,6 +4,9 @@
 import { TILE, W, D, CORE_TOP, EMPTY } from './world.js';
 import { damage } from './player.js';
 
+// Drilling bought per point: 100 fuel = 84.6 hardness, 100 hull = 36.7.
+const FUEL_TO_HULL = 2.31;
+
 // `from`/`to` bound the depth band a kind spawns in. Without `to`, nothing was
 // ever gated out, so at depth every kind stayed equally likely and a 6-damage
 // grubworm was as common in magma as a lurker -- the deep pool was diluted by
@@ -61,7 +64,7 @@ export function populate(world, rand) {
           const pool = HAZARD_KINDS.filter((k) => y >= k.from);
           if (pool.length) {
             const kind = pool[Math.floor(rand() * pool.length)];
-            hazards.push({ kind, x, y, t: rand() * 3, cooldown: 0 });
+            hazards.push({ kind, x, y, t: rand() * 3, cooldown: 0, buried: true });
           }
         }
         continue;
@@ -193,6 +196,7 @@ export function ramAliens(aliens, player, dt, onKill) {
 
 export function updateHazards(hazards, player, dt, onHit) {
   for (const h of hazards) {
+    if (h.spent) continue;
     h.t += dt;
     h.cooldown -= dt;
     if (Math.abs(h.y - player.ty) > 20) continue;
@@ -221,10 +225,23 @@ export function updatePickups(pickups, player, onTake) {
 export function applyHazard(h, player, world, fx) {
   const row = h.kind.row;
 
+  // A hazard sealed in rock is an event you breach, not a standing feature: it
+  // vents, falls or discharges once and is done. Leaving them live meant the
+  // climb out re-triggered every hazard the descent had already dug through,
+  // along the one shaft that exists, with no route around it -- measured, that
+  // was 20 of 23 losses for well-played runs, all of them with fuel still in
+  // the tank. Hazards sitting in open caves are environmental and persist.
+  const spend = (hz) => { if (hz.buried) hz.spent = true; };
+
   if (row === 'acidpool') {
-    // eats the tank rather than the hull, which hurts most when you are deep
-    player.fuel = Math.max(0, player.fuel - 26);
+    // Eats the tank rather than the hull. Fuel is the scarcer currency -- it
+    // buys 84.6 hardness of drilling per 100 against the hull's 36.7 -- so a
+    // point of fuel is worth ~2.3 hull and the drain has to be divided by that
+    // or the number lies about its rank. A flat 26 here cost ~60 hull-equivalent,
+    // which quietly made the mid-table entry the worst hazard in the game.
+    player.fuel = Math.max(0, player.fuel - h.kind.dmg / FUEL_TO_HULL);
     fx.spawn('acidsplash', player.px + 16, player.py + 16);
+    spend(h);
     return 'fuel';
   }
 
@@ -233,8 +250,15 @@ export function applyHazard(h, player, world, fx) {
   if (!damage(player, amount, fx)) return null;
   fx.spawn(row === 'electricvein' ? 'sparks' : 'flash', player.px + 16, player.py + 16);
 
-  // boulders throw you back up the shaft; void pits drop you further down it
-  const shove = row === 'boulder' ? -1 : row === 'voidpit' ? 1 : 0;
+  // Displacement has to be a setback in both phases. A boulder that always
+  // threw the player up the shaft was a mild cost while descending and a
+  // straight gift while escaping, where being flung toward the exit is free
+  // progress against the clock -- so it knocks you back the way you came
+  // instead. Void pits still drop downward, but only ever into an already-open
+  // tile, so on the way down they cannot save the fuel of a tile you would
+  // otherwise have had to drill.
+  const back = player.facing === 'up' ? 1 : -1;
+  const shove = row === 'boulder' ? back : row === 'voidpit' ? 1 : 0;
   if (shove && !player.moving && !world.solid(player.tx, player.ty + shove)) {
     player.ty += shove;
     player.py = player.ty * TILE;
@@ -243,5 +267,6 @@ export function applyHazard(h, player, world, fx) {
 
   // gas keeps burning for a beat instead of hitting once
   if (row === 'gaspocket') h.cooldown = 0.45;
+  else spend(h);
   return amount;
 }

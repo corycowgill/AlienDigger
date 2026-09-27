@@ -62,6 +62,21 @@ function run(seed, policy, levels = {}) {
     // ---- policy picks a direction
     let dir = 'down';
     if (phase === 'descend') {
+      // A competent player paces: the bit cannot grind continuously once the
+      // rock is hot, so back off and let it shed before it redlines.
+      // Hysteresis: cool properly rather than tapping at the threshold.
+      if (policy === 'greedy' && (player.heat > 82 || (player.cooling && player.heat > 25))) {
+        player.cooling = player.heat > 25;
+        input.set(null);
+        updatePlayer(player, world, input, DT, noFx);
+        updatePickups(pickups, player, (u) => {
+          if (u.kind.kind === 'fuel') player.fuel = Math.min(player.stats.maxFuel, player.fuel + u.kind.amount);
+          else player.hull = Math.min(player.stats.maxHull, player.hull + u.kind.amount);
+        });
+        t += DT;
+        continue;
+      }
+
       if (policy === 'greedy') {
         // Detour for fuel when the tank is low, then come back to the shaft
         // column. A player who wanders leaves no straight way home, and the

@@ -23,23 +23,29 @@ const LEFT = [
   {
     head: 'FUEL IS THE CLOCK', color: GOLD,
     lines: [
-      'Drilling burns fuel fast. Coasting',
-      'through open tunnel burns it slowly.',
-      'A full tank is about a third of the',
-      'way down, so you must refuel en route.',
-      'On empty the rig burns HULL instead',
-      'and the drill slows to a crawl.',
+      'Drilling burns fuel fast; coasting',
+      'burns it slowly. A full tank is about',
+      'a third of the way down, so you must',
+      'refuel en route. On empty the rig',
+      'burns HULL and the drill crawls.',
+    ],
+  },
+  {
+    head: 'HEAT IS THE PACE', color: '#ff8c3a',
+    lines: [
+      'Deep rock heats the bit. Redline it',
+      'and it eats your hull. Stop cutting',
+      'and it sheds fast, so pace rather than',
+      'push. The ice shelf actively cools.',
     ],
   },
   {
     head: 'READ THE ROCK', color: INK,
     lines: [
-      'Each stratum is harder and costlier',
-      'than the last. The bar by the depth',
-      'readout shows how far is left.',
-      'Fuel caches and repair kits sit buried',
+      'Each stratum is harder, hotter and',
+      'costlier. Fuel and repairs sit buried',
       'in the rock; your scanner shows the',
-      'ones close enough to be worth a detour.',
+      'ones worth a detour.',
     ],
   },
 ];

@@ -151,8 +151,8 @@ export function createFoundry(save) {
       ctx.font = '11px ui-monospace, monospace';
       ctx.fillStyle = DIM;
       ctx.fillText(
-        `hull ${st.maxHull}   fuel ${st.maxFuel}   drill ${st.drillRate.toFixed(2)}`
-        + `   scanner ${st.scanner}   haul x${st.cargoMult.toFixed(2)}`,
+        `hull ${st.maxHull}  fuel ${st.maxFuel}  drill ${st.drillRate.toFixed(2)}`
+        + `  heat x${st.cooling.toFixed(2)}  scanner ${st.scanner}  haul x${st.cargoMult.toFixed(2)}`,
         cw / 2, top + UPGRADES.length * rowH + 14,
       );
 

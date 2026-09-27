@@ -56,6 +56,10 @@ burns it slowly, and running dry starts eating your hull. Fuel cells and repair
 kits are scattered through the caves, so the descent is a supply problem as much
 as a dig.
 
+Heat is the other clock. Deep rock heats the bit and a redline eats your hull,
+but it sheds fast the moment you stop cutting -- so the deep game is paced, not
+ground through, and the ice shelf is worth crossing because it actively cools.
+
 Eight strata get harder as you go down — topsoil, dirt, sandstone, rock, ice,
 fungal caverns, crystal, magma — and both the ore and the danger get richer with
 depth. Aliens chase when you get close; hazards hit when you share their tile.

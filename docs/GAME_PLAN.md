@@ -15,11 +15,13 @@ detonation. The blast shatters the planet and you harvest the precious minerals.
 
 > **Status.** This is the design, not a description of the build. The Foundry
 > and all six upgrades are in, and minerals now buy them, so ore density is
-> live tuning, the Spitter spits, and the drill cuts on all eight headings.
-> Still unbuilt: heat. Two of the five pickup art frames are unused.
+> live tuning, the Spitter spits, the drill cuts on all eight headings, and heat
+> is in. Two of the five pickup art frames are still unused.
 
 ## Systems
-- **Digger**: 8-directional drill; drilling speed varies per material. Hull HP, fuel, heat.
+- **Digger**: 8-directional drill; drilling speed varies per material. Hull HP,
+  fuel, and heat — heat builds while cutting deep rock and sheds while not, so
+  the deep game is paced rather than ground through. The ice shelf cools.
 - **Fuel**: burns while drilling (fast) and idling (slow). Refuel from fuel cells / pods.
 - **HUD**: hull health bar, mission timer, fuel gauge, depth meter, mineral tally, charge count.
 - **Strata** (top to bottom): topsoil, sandstone, rock, ice shelf, fungal caverns,
@@ -33,7 +35,8 @@ detonation. The blast shatters the planet and you harvest the precious minerals.
   Swarmlet (fast and erratic), Tunnel Lurker (dormant until you are close,
   then bolts), Core Guardian (boss, gates the charges).
 - **Minerals**: Copper, Iridium, Voidstone, Alien Amber, Pulse Crystal (rarity ascending).
-- **Upgrades**: drill bit tier, hull plating, fuel tank, cargo bay, scanner, thrusters.
+- **Upgrades**: drill bit, fuel tank, hull plating, scanner, thrusters, heat
+  sinks, cargo bay.
 
 ## Tech
 - Web build: HTML5 canvas + TypeScript, or Godot 4 (2D). Tile grid 32x32.

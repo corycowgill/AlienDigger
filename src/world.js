@@ -9,15 +9,18 @@ export const CORE_TOP = D - 14;
 export const EMPTY = -1;
 
 // One entry per strata row in the tileset, shallowest first.
+// `heat` is degrees per second of drilling in that stratum. Ice is negative on
+// purpose: the shelf is the one place a hot drill can shed heat, which gives
+// the layer a reason to exist beyond being expensive to cross.
 export const STRATA = [
-  { name: 'topsoil',   row: 0, hardness: 0.35, depth: 6 },
-  { name: 'dirt',      row: 1, hardness: 0.5,  depth: 24 },
-  { name: 'sandstone', row: 2, hardness: 0.7,  depth: 48 },
-  { name: 'rock',      row: 3, hardness: 1.0,  depth: 80 },
-  { name: 'ice',       row: 4, hardness: 1.3,  depth: 110 },
-  { name: 'fungal',    row: 5, hardness: 1.45, depth: 140 },
-  { name: 'crystal',   row: 6, hardness: 1.7,  depth: 172 },
-  { name: 'magma',     row: 7, hardness: 2.4,  depth: D },
+  { name: 'topsoil',   row: 0, hardness: 0.35, depth: 6,   heat: 0 },
+  { name: 'dirt',      row: 1, hardness: 0.5,  depth: 24,  heat: 0 },
+  { name: 'sandstone', row: 2, hardness: 0.7,  depth: 48,  heat: 0.5 },
+  { name: 'rock',      row: 3, hardness: 1.0,  depth: 80,  heat: 1.5 },
+  { name: 'ice',       row: 4, hardness: 1.3,  depth: 110, heat: -8 },
+  { name: 'fungal',    row: 5, hardness: 1.45, depth: 140, heat: 3 },
+  { name: 'crystal',   row: 6, hardness: 1.7,  depth: 172, heat: 5 },
+  { name: 'magma',     row: 7, hardness: 2.4,  depth: D,   heat: 7.5 },
 ];
 
 export function strataAt(y) {

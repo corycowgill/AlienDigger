@@ -4,6 +4,7 @@
 const INK = '#d7d2e0';
 const PANEL = '#161222';
 const TRIM = '#2fd2e8';
+const DIM = '#8c85a0';
 
 const ORE_COLORS = ['#e07a2b', '#d8dbe6', '#7a4fd6', '#e8b02b', '#39d7e8'];
 
@@ -62,11 +63,29 @@ export function drawHud(ctx, p, state, cw, muted, strata, maxDepth) {
   ctx.fillRect(0, 0, cw, 62);
   ctx.fillStyle = TRIM; ctx.fillRect(0, 62, cw, 1);
 
-  const hullFrac = p.hull / 100;
+  const hullFrac = p.hull / p.stats.maxHull;
   bar(ctx, 14, 26, 180, 12, hullFrac,
       hullFrac > 0.5 ? '#e0453a' : (Math.floor(state.time * 6) % 2 ? '#ff7b6b' : '#7a1f18'),
       'HULL');
-  bar(ctx, 218, 26, 150, 12, p.fuel / 100, '#e8b02b', 'FUEL');
+  bar(ctx, 218, 22, 150, 11, p.fuel / p.stats.maxFuel, '#e8b02b', 'FUEL');
+
+  // Heat only earns space once it is doing something. Below a quarter it is a
+  // thin idle strip; hot it fills and, redlined, it flashes -- because the
+  // player is watching the shaft, not the gauge.
+  const heat = Math.max(0, Math.min(1, p.heat / 100));
+  const redline = p.heat >= 100;
+  ctx.fillStyle = '#0c0a12';
+  ctx.fillRect(218, 42, 150, 7);
+  ctx.fillStyle = redline
+    ? (Math.floor(state.time * 8) % 2 ? '#ff6b5b' : '#5a1a12')
+    : heat > 0.6 ? '#ff8c3a' : '#c2571f';
+  ctx.fillRect(218, 42, Math.round(150 * heat), 7);
+  ctx.strokeStyle = redline ? '#ff6b5b' : '#2b2438';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(217.5, 41.5, 151, 8);
+  ctx.fillStyle = redline ? '#ff6b5b' : DIM;
+  ctx.font = '9px ui-monospace, monospace';
+  ctx.fillText(redline ? 'OVERHEAT' : 'HEAT', 374, 49);
 
   ctx.fillStyle = INK;
   ctx.font = '10px ui-monospace, monospace';

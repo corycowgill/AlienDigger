@@ -34,6 +34,11 @@ export const UPGRADES = [
     cost: (l) => 150 + l * 130,
   },
   {
+    key: 'cooling', name: 'HEAT SINKS', max: 4,
+    blurb: 'Run hotter rock for longer',
+    cost: (l) => 170 + l * 145,
+  },
+  {
     key: 'cargo', name: 'CARGO BAY', max: 4,
     blurb: 'Bank more per mineral',
     cost: (l) => 160 + l * 140,
@@ -49,6 +54,7 @@ const BASE = {
   scanner: 7,
   moveTime: 0.14,
   cargoMult: 1,
+  cooling: 1,
 };
 
 export function emptySave() {
@@ -90,6 +96,7 @@ export function statsFor(levels) {
     scanner: BASE.scanner + 3 * (l.scanner | 0),
     moveTime: BASE.moveTime / (1 + 0.1 * (l.thruster | 0)),
     cargoMult: BASE.cargoMult + 0.2 * (l.cargo | 0),
+    cooling: BASE.cooling / (1 + 0.16 * (l.cooling | 0)),
   };
 }
 

@@ -83,20 +83,50 @@ export class World {
       }
     }
 
-    // ores get richer with depth: shallow rock holds copper, the deep holds crystal
+    // Background scatter: thin, and mostly the cheap tiers. This is what you
+    // pick up incidentally on the way down rather than something worth steering
+    // for.
     for (let y = 4; y < D; y++) {
       for (let x = 0; x < W; x++) {
         const i = y * W + x;
         if (this.tiles[i] === EMPTY) continue;
-        if (rand() > 0.045) continue;
+        if (rand() > 0.022) continue;
         // Depth sets which tiers are available at all; the curve then makes the
         // good ones rare within that. The old formula did the opposite -- it
         // pushed the tier floor up with depth, so because most of the world is
         // deep, the top tiers ended up the most abundant ore in the game and
         // copper the rarest, inverting both the rarity ladder and the scoring.
-        const cap = Math.min(4, Math.floor((y / D) * 6));
-        this.ore[i] = Math.floor(Math.pow(rand(), 2.2) * (cap + 1));
+        const cap = Math.min(3, Math.floor((y / D) * 5));
+        this.ore[i] = Math.floor(Math.pow(rand(), 2.4) * (cap + 1));
       }
+    }
+
+    // Veins are the reason to steer. Uniform scatter meant every column was
+    // worth the same and the only routing decision was the next fuel cache; a
+    // visible cluster of pulse crystal three columns off your shaft is a real
+    // question, because the detour costs fuel and heat and the rich ones sit in
+    // the deep where both are scarce.
+    this.veins = [];
+    const veinCount = 15 + Math.floor(rand() * 6);
+    for (let v = 0; v < veinCount; v++) {
+      const cy = 14 + Math.floor(rand() * (CORE_TOP - 24));
+      const cx = 2 + Math.floor(rand() * (W - 4));
+      // richer with depth, and the richest are the smallest
+      const cap = Math.min(4, Math.floor((cy / D) * 5.4));
+      const tier = Math.max(0, cap - (rand() < 0.45 ? 1 : 0));
+      const size = Math.max(3, 12 - tier * 2 + Math.floor(rand() * 4));
+
+      let x = cx, y = cy, placed = 0;
+      for (let step = 0; step < size * 5 && placed < size; step++) {
+        const i = y * W + x;
+        if (x > 0 && x < W - 1 && y > 3 && y < D && this.tiles[i] !== EMPTY) {
+          this.ore[i] = tier;
+          placed++;
+        }
+        x += Math.floor(rand() * 3) - 1;
+        y += Math.floor(rand() * 3) - 1;
+      }
+      if (placed >= 3) this.veins.push({ x: cx, y: cy, tier, size: placed });
     }
 
     this.revision = 0;     // bumped on every dig, so a cached render knows

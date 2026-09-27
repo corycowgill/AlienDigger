@@ -56,6 +56,11 @@ buy the margin back rather than starting with it -- a part-kitted drill clears
 
 ## How it plays
 
+Ore clusters into visible veins rather than scattering evenly, and the rich ones
+sit deep and come guarded -- so a detour costs fuel, heat and hull for a much
+bigger haul. That trade is the decision a run is actually about; the background
+scatter is just what you pick up on the way past.
+
 Buried in the rock alongside fuel and repairs: coolant that dumps all heat, a
 shield that eats hits for a few seconds, and a bit overdrive. The Core Guardian
 has to be driven into -- there is no weapon -- before the charges will arm.

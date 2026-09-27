@@ -35,7 +35,9 @@ detonation. The blast shatters the planet and you harvest the precious minerals.
   clear tunnel; closes to melee without a line),
   Swarmlet (fast and erratic), Tunnel Lurker (dormant until you are close,
   then bolts), Core Guardian (boss, gates the charges).
-- **Minerals**: Copper, Iridium, Voidstone, Alien Amber, Pulse Crystal (rarity ascending).
+- **Minerals**: Copper, Iridium, Voidstone, Alien Amber, Pulse Crystal (rarity
+  ascending). They cluster into visible veins, richer and smaller with depth,
+  and tier 3+ veins are guarded.
 - **Upgrades**: drill bit, fuel tank, hull plating, scanner, thrusters, heat
   sinks, cargo bay.
 

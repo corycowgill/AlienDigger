@@ -95,7 +95,12 @@ export function applyPickup(u, player) {
 // a gas pocket you breach. Tuned so a straight descent meets roughly six
 // pickups, which is about what the 300-fuel column costs.
 const BURIED_PICKUP = 0.042;
-const BURIED_HAZARD = 0.012;
+// Lowered when ore veins arrived: the rich ones carry their own guards, so the
+// background rate came down to keep the total threat roughly where it was.
+// Otherwise veins would have added danger everywhere rather than concentrating
+// it where the treasure is, which is the whole point -- risk you choose, not
+// risk imposed on a shaft that happened to pass nearby.
+const BURIED_HAZARD = 0.0085;
 
 export function populate(world, rand, density = 1) {
   const aliens = [];
@@ -156,6 +161,21 @@ export function populate(world, rand, density = 1) {
     x: gx, y: gy, hp: 24, t: 0, dx: 1,
     px: gx * TILE, py: gy * TILE, boss: true,
   });
+
+  // The richest veins are guarded, which is what turns "there is treasure over
+  // there" into a decision instead of a free detour. Tier 3 and 4 only.
+  for (const vein of world.veins || []) {
+    if (vein.tier < 3) continue;
+    const guards = vein.tier === 4 ? 3 : 2;
+    for (let g = 0; g < guards; g++) {
+      const x = Math.max(1, Math.min(W - 2, vein.x + Math.floor(rand() * 5) - 2));
+      const y = Math.max(6, Math.min(CORE_TOP - 1, vein.y + Math.floor(rand() * 5) - 2));
+      const pool = HAZARD_KINDS.filter((k) => y >= k.from);
+      if (!pool.length) continue;
+      const kind = pool[Math.floor(rand() * pool.length)];
+      hazards.push({ kind, x, y, t: rand() * 3, cooldown: 0, buried: world.solid(x, y) });
+    }
+  }
 
   // The chamber gets a hand-placed guard detail rather than the scatter rates
   // used above. Running the cave rates over a room that is 100% open packed ~13

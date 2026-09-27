@@ -56,38 +56,78 @@
   }
   body.touch #help { display: none; }
 
+  /* Sized against the viewport, not in fixed pixels. At 56px a button was 45%
+     of the screen height on a 375px-tall phone, and the pad swallowed the
+     bottom-left of the play area. */
+  :root { --btn: clamp(38px, 12.5vh, 58px); }
+
   .pad {
-    position: absolute; bottom: calc(18px + env(safe-area-inset-bottom));
-    left: 18px; width: 168px; height: 168px; pointer-events: auto;
+    position: absolute; bottom: calc(10px + env(safe-area-inset-bottom));
+    left: 10px;
+    width: calc(var(--btn) * 3); height: calc(var(--btn) * 3);
+    pointer-events: auto;
+    display: grid;
+    grid-template-columns: repeat(3, var(--btn));
+    grid-template-rows: repeat(3, var(--btn));
   }
+  /* Eight directions, not four. Diagonals matter now -- a straight shaft is the
+     only one that climbs out easily -- and reaching one by pressing two edges
+     at once needs a second thumb. */
   .pad button {
-    position: absolute; width: 56px; height: 56px;
-    background: rgba(22,18,34,0.72); color: var(--trim);
-    border: 2px solid rgba(47,210,232,0.45); border-radius: 10px;
-    font: 700 20px/1 ui-monospace, monospace; padding: 0;
+    background: rgba(22,18,34,0.52); color: var(--trim);
+    border: 2px solid rgba(47,210,232,0.34); border-radius: 8px;
+    font: 700 max(13px, calc(var(--btn) * 0.34))/1 ui-monospace, monospace;
+    padding: 0; margin: 1px;
   }
+  .pad button.diag { color: rgba(47,210,232,0.6); border-color: rgba(47,210,232,0.2); }
   .pad button:active, .pad button.on {
-    background: rgba(47,210,232,0.3); border-color: var(--trim);
+    background: rgba(47,210,232,0.34); border-color: var(--trim); color: #fff;
   }
-  .pad .up    { left: 56px; top: 0; }
-  .pad .left  { left: 0; top: 56px; }
-  .pad .right { left: 112px; top: 56px; }
-  .pad .down  { left: 56px; top: 112px; }
+  .pad .hole { pointer-events: none; }
 
   .actions {
-    position: absolute; bottom: calc(28px + env(safe-area-inset-bottom));
-    right: 18px; display: flex; flex-direction: column; gap: 12px;
-    pointer-events: auto;
+    position: absolute; bottom: calc(14px + env(safe-area-inset-bottom));
+    right: 10px; display: flex; flex-direction: column;
+    gap: max(6px, 1.4vh); pointer-events: auto;
   }
   .actions button {
-    width: 84px; height: 62px; border-radius: 12px;
-    background: rgba(22,18,34,0.72); color: var(--trim);
-    border: 2px solid rgba(47,210,232,0.45);
-    font: 700 13px/1 ui-monospace, monospace;
+    width: calc(var(--btn) * 1.5); height: calc(var(--btn) * 0.92);
+    border-radius: 10px;
+    background: rgba(22,18,34,0.52); color: var(--trim);
+    border: 2px solid rgba(47,210,232,0.34);
+    font: 700 max(10px, calc(var(--btn) * 0.22))/1 ui-monospace, monospace;
   }
-  .actions button:active { background: rgba(47,210,232,0.3); }
-  .actions .restart { color: #e8b02b; border-color: rgba(232,176,43,0.45); }
-  .actions .mute { height: 44px; color: #8c85a0; border-color: rgba(140,133,160,0.4); }
+  .actions button:active { background: rgba(47,210,232,0.34); }
+  .actions .restart { color: #e8b02b; border-color: rgba(232,176,43,0.4); }
+  .actions .mute { height: calc(var(--btn) * 0.7); color: #8c85a0;
+                   border-color: rgba(140,133,160,0.34); }
+
+  #rotate-hint { display: none; }
+  body.touch #rotate-hint {
+    position: fixed; left: 0; right: 0; z-index: 11;
+    text-align: center; color: #6f6883; font-size: 12px;
+    pointer-events: none;
+  }
+
+  /* Portrait has height to spare -- a 960x600 canvas scaled to a 390-wide
+     screen is only 244 tall in an 844-tall viewport. Centring it left dead
+     bands above and below while the controls sat on top of the play area, so
+     portrait stacks instead: picture up top, controls in the room underneath,
+     nothing overlapping, and the buttons get bigger because they can. */
+  @media (orientation: portrait) {
+    body.touch { --btn: clamp(52px, 8.5vh, 84px); }
+    /* #wrap is a column flex, so the main axis is vertical: it is
+       justify-content that moves the canvas up, not align-items. */
+    body.touch #wrap { justify-content: flex-start; padding-top: 5vh; }
+    body.touch .pad { bottom: calc(12vh + env(safe-area-inset-bottom)); left: 6vw; }
+    body.touch .actions {
+      bottom: calc(12vh + env(safe-area-inset-bottom)); right: 6vw;
+      gap: max(8px, 1.2vh);
+    }
+    /* The canvas is 960x600, so at full width its height is 62.5vw; the hint
+       sits just under it. */
+    body.touch #rotate-hint { display: block; top: calc(5vh + 62.5vw + 16px); }
+  }
 </style>
 </head>
 <body>
@@ -131,12 +171,22 @@
     </div>
   </div>
 
+  <!-- Portrait only. The canvas is 16:10, so on a 9:19.5 screen it can never
+       fill the height however it is scaled -- worth saying rather than leaving
+       the player to wonder why the view is small. -->
+  <div id="rotate-hint">↻ turn sideways for a bigger view</div>
+
   <div id="touch">
     <div class="pad">
-      <button class="up"    data-dir="up"    aria-label="drill up">▲</button>
-      <button class="left"  data-dir="left"  aria-label="drill left">◀</button>
-      <button class="right" data-dir="right" aria-label="drill right">▶</button>
-      <button class="down"  data-dir="down"  aria-label="drill down">▼</button>
+      <button class="diag" data-dir="up left"    aria-label="drill up and left">↖</button>
+      <button              data-dir="up"         aria-label="drill up">▲</button>
+      <button class="diag" data-dir="up right"   aria-label="drill up and right">↗</button>
+      <button              data-dir="left"       aria-label="drill left">◀</button>
+      <span class="hole"></span>
+      <button              data-dir="right"      aria-label="drill right">▶</button>
+      <button class="diag" data-dir="down left"  aria-label="drill down and left">↙</button>
+      <button              data-dir="down"       aria-label="drill down">▼</button>
+      <button class="diag" data-dir="down right" aria-label="drill down and right">↘</button>
     </div>
     <div class="actions">
       <button data-tap="plant" aria-label="plant charge">PLANT</button>

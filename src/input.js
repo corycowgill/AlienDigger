@@ -56,44 +56,53 @@ export function createInput() {
   // --------------------------------------------------------------- touch
   // A pointer that starts on a d-pad button holds that direction until it is
   // lifted, and slides between buttons without needing to be lifted first.
-  const held = new Map();   // pointerId -> action
+  // pointerId -> the set of actions that pointer is currently holding. A corner
+  // of the pad holds two at once, which is how a diagonal is reached with one
+  // thumb; before this it took two.
+  const held = new Map();
 
-  function actionAt(x, y) {
+  function dirsAt(x, y) {
     const el = document.elementFromPoint(x, y);
-    return el && el.dataset ? (el.dataset.dir || null) : null;
+    const dir = el && el.dataset ? el.dataset.dir : null;
+    return dir ? dir.split(' ') : [];
   }
 
   function bindTouch() {
     const pad = document.querySelector('#touch .pad');
     if (!pad) return;
 
-    const set = (id, action) => {
-      const prev = held.get(id);
-      if (prev === action) return;
-      if (prev) release(prev);
-      if (action) { press(action); held.set(id, action); } else { held.delete(id); }
+    const set = (id, dirs) => {
+      const prev = held.get(id) || [];
+      if (prev.length === dirs.length && prev.every((d, i) => d === dirs[i])) return;
+      for (const d of prev) if (!dirs.includes(d)) release(d);
+      for (const d of dirs) if (!prev.includes(d)) press(d);
+      if (dirs.length) held.set(id, dirs); else held.delete(id);
+
+      const lit = new Set();
+      for (const list of held.values()) for (const d of list) lit.add(d);
       for (const b of pad.querySelectorAll('button')) {
-        b.classList.toggle('on', [...held.values()].includes(b.dataset.dir));
+        const own = (b.dataset.dir || '').split(' ');
+        b.classList.toggle('on', own.length > 0 && own.every((d) => lit.has(d)));
       }
     };
 
     pad.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      set(e.pointerId, actionAt(e.clientX, e.clientY));
+      pad.setPointerCapture?.(e.pointerId);
+      set(e.pointerId, dirsAt(e.clientX, e.clientY));
     });
     pad.addEventListener('pointermove', (e) => {
       if (!held.has(e.pointerId)) return;
       e.preventDefault();
-      set(e.pointerId, actionAt(e.clientX, e.clientY));
+      set(e.pointerId, dirsAt(e.clientX, e.clientY));
     });
     const lift = (e) => {
       if (!held.has(e.pointerId)) return;
       e.preventDefault();
-      set(e.pointerId, null);
+      set(e.pointerId, []);
     };
     pad.addEventListener('pointerup', lift);
     pad.addEventListener('pointercancel', lift);
-    pad.addEventListener('pointerleave', lift);
 
     for (const btn of document.querySelectorAll('#touch [data-tap]')) {
       btn.addEventListener('pointerdown', (e) => {

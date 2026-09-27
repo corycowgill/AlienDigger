@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Alien Digger - phone layouts</title>
+<style>
+  body { margin: 0; background: #0d0a14; color: #d7d2e0;
+         font: 12px ui-monospace, monospace; padding: 12px; }
+  h1 { font-size: 14px; margin: 0 0 12px; color: #2fd2e8; font-weight: 700; }
+  .rig { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  figure { margin: 0; }
+  figcaption { margin-bottom: 4px; color: #8c85a0; }
+  iframe { border: 1px solid #2b2438; display: block; background: #000; }
+</style>
+</head>
+<body>
+<h1>Alien Digger &mdash; real viewports, touch layout forced</h1>
+<div class="rig" id="rig"></div>
+<script>
+  // An iframe gets a genuine viewport, which window.resizeTo does not on a
+  // maximised desktop browser -- so this is the only way to see what a phone
+  // actually renders without holding one.
+  const ONLY = new URLSearchParams(location.search).get('only');
+  const SIZES = [
+    ['iPhone SE landscape', 667, 375],
+    ['iPhone 14 landscape', 844, 390],
+    ['Pixel 7 landscape', 915, 412],
+    ['iPhone 14 portrait', 390, 844],
+  ];
+  const rig = document.getElementById('rig');
+  for (const [label, w, h] of SIZES.filter(([l]) => !ONLY || l.includes(ONLY))) {
+    const fig = document.createElement('figure');
+    const cap = document.createElement('figcaption');
+    cap.textContent = `${label}  ${w}x${h}`;
+    const f = document.createElement('iframe');
+    f.width = w; f.height = h;
+    // bust the cache, or the rig quietly shows you the last build
+    f.src = `../index.html?touch&nointro&dev&rig=${w}x${h}&cb=${Date.now()}`;
+    fig.append(cap, f);
+    rig.appendChild(fig);
+  }
+</script>
+</body>
+</html>

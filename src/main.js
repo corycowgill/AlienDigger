@@ -25,7 +25,10 @@ const SCANNER = 7;                   // tiles: how far buried caches read throug
 ctx.imageSmoothingEnabled = false;
 
 // Devices without a real keyboard get the on-screen pad.
-const COARSE = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+// ?touch forces the touch layout on a desktop, which is the only way to see it
+// without a phone in hand -- tools/mobile.html leans on this.
+const COARSE = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window
+            || new URLSearchParams(location.search).has('touch');
 // Screen shake is the one thing here that can make someone ill, so it is opt-out
 // at the OS level. The studio ident already honours this; the game should too.
 const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;

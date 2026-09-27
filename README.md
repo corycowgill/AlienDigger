@@ -28,7 +28,14 @@ install upgrades, **Y** or **Start** to restart and to launch. Browsers only
 expose a pad after its first button press, so press something to wake it. A
 connected pad hides the touch controls.
 
-**Touch** — an on-screen d-pad and buttons appear automatically on touch devices.
+**Touch** — an eight-way d-pad and buttons appear automatically on touch devices.
+The corners hold two directions at once, so a diagonal takes one thumb rather
+than two. Everything is sized against the viewport, and portrait stacks the
+picture above the controls instead of overlaying them.
+
+`tools/mobile.html` renders the game in iframes at four real phone viewports,
+which is the only way to see the touch layout without a phone: `window.resizeTo`
+is a no-op on a maximised desktop browser, and `?touch` forces the layout on.
 
 **Sound** — `M`, **LB**, or the SOUND button toggles it; the choice persists.
 Two detuned low oscillators drone under everything, and the filter closes as you

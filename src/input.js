@@ -88,8 +88,12 @@ export function createInput() {
 
     pad.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      pad.setPointerCapture?.(e.pointerId);
+      // Register the press first. Pointer capture is a nicety -- it keeps a
+      // thumb that slides off the pad still reporting -- but it can throw, and
+      // when it did, it took the whole handler with it and the d-pad did
+      // nothing at all.
       set(e.pointerId, dirsAt(e.clientX, e.clientY));
+      try { pad.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
     });
     pad.addEventListener('pointermove', (e) => {
       if (!held.has(e.pointerId)) return;

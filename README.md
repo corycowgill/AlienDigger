@@ -197,6 +197,21 @@ node tools/supply.mjs 200              # is the deep game still supplyable?
 node tools/census.mjs 20               # what a generated world actually contains
 ```
 
+`tools/statesheet.js` is the visual counterpart: load the game with `?dev` and
+run
+
+```js
+await (await fetch('tools/statesheet.js')).text().then(eval)
+```
+
+and it drives the game through all 26 of its visual states -- every heading, a
+damaged rig, each stratum, each boss phase, the wreck, the banner, the Foundry,
+the help -- and lays them out as one contact sheet. `check.mjs` verifies the
+rules; it cannot see a sprite pointing the wrong way, a banner covering the
+explosion it announces, or an effect frozen mid-animation. All three of those
+have shipped here, and all three were caught by looking rather than by a check
+going red.
+
 `sim.mjs` drives the real modules in Node and splits deaths into "died with fuel
 left" versus "ran dry", because a win rate alone averages that distinction away
 -- a run lost to chip damage it could not avoid reads identically to one lost to

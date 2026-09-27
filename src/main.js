@@ -542,8 +542,27 @@ function drawPlayer() {
   const box = TILE * 1.6;
   const scale = box / Math.max(img.width, img.height);
   const w = img.width * scale, h = img.height * scale;
+  const cx = Math.round(p.px - cam.x + TILE / 2);
+  const cy = Math.round(p.py - cam.y + TILE / 2);
+
+  // The rig carries the light but was not lit itself, so against grey rock or
+  // blue ice the player had to hunt for their own avatar -- obvious the moment
+  // every state was laid out side by side. A small warm pool under it, tinted
+  // by what it is doing: cyan idling, hot while cutting.
+  const heat = Math.min(1, p.heat / 100);
+  const glowR = TILE * (p.drilling ? 1.5 : 1.2);
+  const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+  const tint = p.drilling ? `255,${Math.round(180 - heat * 90)},90` : '80,200,235';
+  glow.addColorStop(0, `rgba(${tint},${p.drilling ? 0.4 : 0.26})`);
+  glow.addColorStop(1, `rgba(${tint},0)`);
   ctx.save();
-  ctx.translate(Math.round(p.px - cam.x + TILE / 2), Math.round(p.py - cam.y + TILE / 2));
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = glow;
+  ctx.fillRect(cx - glowR, cy - glowR, glowR * 2, glowR * 2);
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(cx, cy);
   if (facing.endsWith('left')) ctx.scale(-1, 1);
   ctx.drawImage(img, Math.round(-w / 2), Math.round(-h / 2), Math.round(w), Math.round(h));
   ctx.restore();

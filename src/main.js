@@ -98,6 +98,7 @@ function reset(seed = Date.now() & 0xffff) {
   cam = { x: 0, y: 0 };
   state = {
     time: 0, escaping: false, escapeLeft: diff.escape, shake: 0, tremor: 3, band: null,
+    wreck: false, overT: 0,
     over: null,           // 'dead' | 'won' | 'boom'
     banked: 0,           // set once when the run ends
   };
@@ -508,11 +509,16 @@ function drawEntities() {
 
 function drawPlayer() {
   const p = player;
+  if (state.wreck) return;              // it is scrap and smoke now
   if (p.invuln > 0 && Math.floor(state.time * 20) % 2) return;
 
   const facing = p.facing || 'down';
   const hurt = p.hull < p.stats.maxHull * 0.35;
-  const diagonal = facing.length > 4;      // 'upleft', 'downright', ...
+  // A diagonal has both a vertical and a horizontal part. Testing the string
+  // length instead was wrong in a way that only bit one heading: 'right' is
+  // five characters, so driving right drew the down-right sprite.
+  const diagonal = (facing.startsWith('up') || facing.startsWith('down'))
+                && (facing.endsWith('left') || facing.endsWith('right'));
 
   // Diagonals have their own art now. They are drawn rightward and mirrored for
   // the left headings, the same trick the cardinal sheet already uses.
@@ -612,8 +618,16 @@ function update(dt) {
     return;
   }
 
-  // Once a run is over the only way on is through the Foundry.
+  // Once a run is over the only way on is through the Foundry. The world stops
+  // simulating, but effects and timers must not: this returned before
+  // fx.update, so the wreck froze mid-explosion, and before state.time
+  // advanced, so the banner that waits on it would never have appeared.
   if (state.over) {
+    state.overT += dt;
+    fx.update(dt);
+    floaters.update(dt);
+    tips.update(dt);
+    state.shake = Math.max(0, state.shake - dt * 3.4);
     if (input.tapped('restart') || input.tapped('plant')) screen = 'foundry';
     return;
   }
@@ -806,6 +820,20 @@ function update(dt) {
     audio.warn();
   }
 
+  if (player.dead && !state.wreck) {
+    // The drill simply stopped existing before: no blast, no wreck, the banner
+    // just appeared over a rig sitting perfectly intact in its own shaft.
+    state.wreck = true;
+    const cx = player.px + TILE / 2, cy = player.py + TILE / 2;
+    fx.spawn('explosion', cx, cy, 2.2);
+    fx.spawn('debris', cx, cy, 1.6);
+    for (let i = 0; i < 3; i++) {
+      fx.spawn('smoke', cx + (Math.random() - 0.5) * 30, cy - i * 10, 1 + i * 0.3);
+    }
+    state.shake = 1.4;
+    audio.explode();
+  }
+
   if (player.dead) state.over = 'dead';
 
   // Bank once, however the run ended. A lost run still pays out what was dug,
@@ -918,7 +946,10 @@ function render() {
     }
   }
 
-  if (state.over) {
+  // Hold the banner back so the wreck is visible first. It lands across the
+  // middle of the screen, which is exactly where the drill is, so it was
+  // covering the explosion it was announcing.
+  if (state.over && state.overT > 0.85) {
     const title = state.over === 'won' ? 'PLANET CRACKED'
                 : state.over === 'dead' ? 'DRILL DESTROYED' : 'TOO SLOW';
     const why = state.over === 'boom' ? 'you were still inside  -  ' : '';

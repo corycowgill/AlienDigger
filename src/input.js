@@ -114,36 +114,49 @@ export function createInput() {
   // ---------------------------------------------------------- gamepad
   // Polled rather than evented, so it has to diff against the previous frame to
   // turn held buttons into the same press/release pairs a key produces.
-  let padHeld = new Set();
+  // Both sets are reused rather than reallocated. navigator.getGamepads() also
+  // allocates a fresh list on every call in Chrome, so polling is gated behind
+  // a pad having actually connected -- a keyboard or touch player was paying
+  // that churn sixty times a second for a device they do not own.
+  const padHeld = new Set();
+  const padNow = new Set();
+  let padPresent = false;
   let padSeen = false;
 
-  addEventListener('gamepadconnected', () => {
-    padSeen = true;
-    document.body.classList.add('gamepad');
+  const notePad = () => {
+    padPresent = true;
+    if (!padSeen) { padSeen = true; document.body.classList.add('gamepad'); }
+  };
+  addEventListener('gamepadconnected', notePad);
+  addEventListener('gamepaddisconnected', () => {
+    padPresent = Array.from(navigator.getGamepads?.() || []).some((p) => p && p.connected);
   });
 
   function poll() {
-    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-    const now = new Set();
+    if (!padPresent) return;
+    padNow.clear();
 
-    for (const pad of pads) {
+    for (const pad of navigator.getGamepads()) {
       if (!pad || !pad.connected) continue;
-      if (!padSeen) { padSeen = true; document.body.classList.add('gamepad'); }
+      notePad();
 
-      pad.buttons.forEach((b, i) => {
-        if (b && b.pressed && PAD_BUTTONS[i]) now.add(PAD_BUTTONS[i]);
-      });
+      const btns = pad.buttons;
+      for (let i = 0; i < btns.length; i++) {
+        const action = PAD_BUTTONS[i];
+        if (action && btns[i] && btns[i].pressed) padNow.add(action);
+      }
 
-      const [x = 0, y = 0] = pad.axes;
-      if (x < -STICK_DEADZONE) now.add('left');
-      else if (x > STICK_DEADZONE) now.add('right');
-      if (y < -STICK_DEADZONE) now.add('up');
-      else if (y > STICK_DEADZONE) now.add('down');
+      const x = pad.axes[0] || 0, y = pad.axes[1] || 0;
+      if (x < -STICK_DEADZONE) padNow.add('left');
+      else if (x > STICK_DEADZONE) padNow.add('right');
+      if (y < -STICK_DEADZONE) padNow.add('up');
+      else if (y > STICK_DEADZONE) padNow.add('down');
     }
 
-    for (const a of now) if (!padHeld.has(a)) press(a);
-    for (const a of padHeld) if (!now.has(a)) release(a);
-    padHeld = now;
+    for (const a of padNow) if (!padHeld.has(a)) press(a);
+    for (const a of padHeld) if (!padNow.has(a)) release(a);
+    padHeld.clear();
+    for (const a of padNow) padHeld.add(a);
   }
 
   return {

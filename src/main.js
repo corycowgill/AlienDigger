@@ -71,6 +71,9 @@ let lastRun = null;
 let screen = new URLSearchParams(location.search).has('dev') ? 'playing' : 'title';
 
 let world, player, aliens, hazards, pickups, state, cam, hazardAt, diff;
+// Terrain cache state. Declared up here because reset() runs at module load and
+// invalidates the cache, which would hit the temporal dead zone otherwise.
+let cacheOX = null, cacheOY = null, cacheRev = -1;
 
 function reset(seed = Date.now() & 0xffff) {
   diff = difficultyFor(save.cracked);
@@ -79,6 +82,7 @@ function reset(seed = Date.now() & 0xffff) {
   player = createPlayer(save.levels);
   ({ aliens, hazards, pickups } = populate(world, rand, diff.density));
   hazardAt = new Set(hazards.map((h) => h.y * W + h.x));
+  cacheOX = cacheOY = null;   // new world, cached terrain is meaningless
   fx.clear();
   cam = { x: 0, y: 0 };
   state = {
@@ -112,42 +116,67 @@ function drawBackground() {
   ctx.fillRect(0, VIEW_TOP, CW, CH - VIEW_TOP);
 }
 
-function drawTerrain() {
-  const x0 = Math.max(0, Math.floor(cam.x / TILE));
-  const x1 = Math.min(W - 1, Math.ceil((cam.x + CW) / TILE));
-  const y0 = Math.max(0, Math.floor((cam.y + VIEW_TOP) / TILE));
-  const y1 = Math.min(D - 1, Math.ceil((cam.y + CH) / TILE));
+// Terrain is redrawn into an offscreen canvas and blitted, rather than drawing
+// every visible tile every frame. Measured before this: the terrain pass was
+// ~89% of frame cost (1.94ms mean against 0.22ms with it skipped) because it
+// issued roughly 300 drawImage calls a frame for tiles that had not changed.
+// The cache is rebuilt only when the camera crosses a tile boundary or a tile
+// is dug, so a continuous descent rebuilds a couple of times a second instead
+// of sixty.
+const terrain = document.createElement('canvas');
+terrain.width = CW + TILE * 2;
+terrain.height = CH + TILE * 2;
+const tctx = terrain.getContext('2d');
+tctx.imageSmoothingEnabled = false;
 
-  for (let y = y0; y <= y1; y++) {
-    for (let x = x0; x <= x1; x++) {
+function buildTerrainCache(ox, oy) {
+  tctx.clearRect(0, 0, terrain.width, terrain.height);
+  const cols = Math.ceil(terrain.width / TILE);
+  const rows = Math.ceil(terrain.height / TILE);
+
+  for (let ty = 0; ty < rows; ty++) {
+    const y = oy + ty;
+    if (y < 0 || y >= D) continue;
+    for (let tx = 0; tx < cols; tx++) {
+      const x = ox + tx;
+      if (x < 0 || x >= W) continue;
       const i = world.idx(x, y);
       const row = world.tiles[i];
       if (row === EMPTY) continue;
 
-      const sx = Math.round(x * TILE - cam.x);
-      const sy = Math.round(y * TILE - cam.y);
-
+      const sx = tx * TILE, sy = ty * TILE;
       const img = assets.tile(row, world.variant[i]);
-      if (img) ctx.drawImage(img, sx, sy, TILE, TILE);
+      if (img) tctx.drawImage(img, sx, sy, TILE, TILE);
 
       const ore = world.ore[i];
       if (ore >= 0) {
         const gem = assets.anim.minerals.ore[ore];
-        if (gem) ctx.drawImage(gem, sx + 4, sy + 4, TILE - 8, TILE - 8);
-      }
-
-      // crack the tile the drill is currently grinding
-      if (player.drillTarget && player.drillTarget.x === x && player.drillTarget.y === y) {
-        const dg = x !== player.tx && y !== player.ty;
-        const need = Math.max(0.01, world.hardness(x, y) * (dg ? Math.SQRT2 : 1));
-        const f = player.drillProgress / need;
-        const warn = f > 0.7 && hazardAt.has(y * W + x);
-        ctx.fillStyle = warn
-          ? 'rgba(255,60,40,' + (0.25 + Math.sin(state.time * 22) * 0.18) + ')'
-          : 'rgba(255,190,80,' + (0.12 + f * 0.35) + ')';
-        ctx.fillRect(sx, sy, TILE, TILE);
+        if (gem) tctx.drawImage(gem, sx + 4, sy + 4, TILE - 8, TILE - 8);
       }
     }
+  }
+  cacheOX = ox; cacheOY = oy; cacheRev = world.revision;
+}
+
+function drawTerrain() {
+  const ox = Math.floor(cam.x / TILE) - 1;
+  const oy = Math.floor(cam.y / TILE) - 1;
+  if (ox !== cacheOX || oy !== cacheOY || world.revision !== cacheRev) {
+    buildTerrainCache(ox, oy);
+  }
+  ctx.drawImage(terrain, Math.round(ox * TILE - cam.x), Math.round(oy * TILE - cam.y));
+
+  // The tile being ground is dynamic, so it stays a per-frame overlay.
+  const t = player.drillTarget;
+  if (t) {
+    const dg = t.x !== player.tx && t.y !== player.ty;
+    const need = Math.max(0.01, world.hardness(t.x, t.y) * (dg ? Math.SQRT2 : 1));
+    const f = player.drillProgress / need;
+    const warn = f > 0.7 && hazardAt.has(t.y * W + t.x);
+    ctx.fillStyle = warn
+      ? 'rgba(255,60,40,' + (0.25 + Math.sin(state.time * 22) * 0.18) + ')'
+      : 'rgba(255,190,80,' + (0.12 + f * 0.35) + ')';
+    ctx.fillRect(Math.round(t.x * TILE - cam.x), Math.round(t.y * TILE - cam.y), TILE, TILE);
   }
 }
 

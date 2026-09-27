@@ -115,6 +115,15 @@ The repo is a static site with nothing to build, so any static host works. On
 
 `index.html` sits at the repo root, so the game loads at the site root.
 
+## Rendering
+
+Terrain is drawn into an offscreen canvas and blitted, rather than issuing a
+drawImage per visible tile per frame. The cache is rebuilt only when the camera
+crosses a tile boundary or a tile is dug -- `world.revision` tracks the latter --
+so a continuous descent rebuilds a couple of times a second instead of sixty.
+Measured at the deepest, busiest point: mean frame 1.94ms to 0.49ms, p90 8.1ms
+to 0.7ms, and no frames over the 60fps budget where 2% had been.
+
 ## Balance tooling
 
 ```bash

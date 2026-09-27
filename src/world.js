@@ -99,6 +99,7 @@ export class World {
       }
     }
 
+    this.revision = 0;     // bumped on every dig, so a cached render knows
     this.chargeSockets = [];
     const cy = CORE_TOP + 7;
     for (let k = 0; k < 3; k++) {
@@ -123,6 +124,7 @@ export class World {
   dig(x, y) {
     const i = this.idx(x, y);
     this.tiles[i] = EMPTY;
+    this.revision++;
     const ore = this.ore[i];
     this.ore[i] = -1;
     return ore;

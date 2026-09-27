@@ -98,7 +98,7 @@ function reset(seed = Date.now() & 0xffff) {
   cam = { x: 0, y: 0 };
   state = {
     time: 0, escaping: false, escapeLeft: diff.escape, shake: 0, tremor: 3, band: null,
-    wreck: false, overT: 0,
+    wreck: false, overT: 0, deepest: 0,
     over: null,           // 'dead' | 'won' | 'boom'
     banked: 0,           // set once when the run ends
   };
@@ -869,6 +869,18 @@ function update(dt) {
     save.credits += state.banked;
     save.runs++;
     if (state.over === 'won') save.cracked++;
+
+    // A run that ends badly still leaves a mark. Without this the only trace of
+    // a deep run that died at 180m was the credits it salvaged, which says
+    // nothing about how close it came.
+    // A save written before bests existed has no `best`, and a missing field
+    // should not take down the end of a run.
+    if (!save.best) save.best = { depth: 0, haul: 0 };
+    const deepest = Math.max(player.ty, state.deepest || 0);
+    const beatDepth = deepest > save.best.depth;
+    const beatHaul = state.banked > save.best.haul;
+    if (beatDepth) save.best.depth = deepest;
+    if (beatHaul) save.best.haul = state.banked;
     store(save);
     if (state.over === 'won') audio.win(); else audio.lose();
     lastRun = {
@@ -882,8 +894,13 @@ function update(dt) {
       minerals: [...player.minerals],
       banked: state.banked,
       gross: valueOf(player.minerals, player.stats.cargoMult, diff.payout),
+      deepest,
+      beatDepth,
+      beatHaul,
     };
   }
+
+  state.deepest = Math.max(state.deepest || 0, player.ty);
 
   state.shake = Math.max(0, state.shake - dt * 3.4);
   fx.update(dt);

@@ -76,7 +76,16 @@ export function createFoundry(save) {
         const secs = String(lastRun.time % 60).padStart(2, '0');
         ctx.font = '11px ui-monospace, monospace';
         ctx.fillStyle = DIM;
-        ctx.fillText(`${lastRun.depth}m reached   ${mins}:${secs} elapsed`, cw / 2, 82);
+        const deepest = lastRun.deepest ?? lastRun.depth;
+        ctx.fillText(`${deepest}m deepest   ${mins}:${secs} elapsed`, cw / 2, 82);
+
+        if (lastRun.beatDepth || lastRun.beatHaul) {
+          ctx.fillStyle = '#4ae06b';
+          ctx.font = 'bold 11px ui-monospace, monospace';
+          const what = lastRun.beatDepth && lastRun.beatHaul ? 'DEEPEST RUN AND BIGGEST HAUL'
+                     : lastRun.beatDepth ? 'DEEPEST RUN YET' : 'BIGGEST HAUL YET';
+          ctx.fillText(what, cw / 2, 128);
+        }
 
         const total = lastRun.minerals.reduce((a, c) => a + c, 0);
         if (total) {
@@ -97,16 +106,16 @@ export function createFoundry(save) {
           ctx.fillStyle = '#7a5a2a';
           ctx.font = '10px ui-monospace, monospace';
           ctx.fillText(`${lastRun.gross} CR dug, ${lastRun.gross - lastRun.banked} lost with the drill`,
-                       cw / 2, 114);
+                       cw / 2, 113);
         }
       }
 
       ctx.font = 'bold 16px ui-monospace, monospace';
       ctx.fillStyle = GOLD;
-      ctx.fillText(`${save.credits} CR`, cw / 2, 136);
+      ctx.fillText(`${save.credits} CR`, cw / 2, 148);
 
       // upgrade rows
-      const top = 150, rowH = 46, panelW = 620, x0 = (cw - panelW) / 2;
+      const top = 162, rowH = 44, panelW = 620, x0 = (cw - panelW) / 2;
       UPGRADES.forEach((u, i) => {
         const y = top + i * rowH;
         const lvl = save.levels[u.key] | 0;

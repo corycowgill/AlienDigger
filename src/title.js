@@ -65,7 +65,7 @@ export function createTitle(assets, coarse, save) {
         ctx.fillStyle = TRIM;
         ctx.font = 'bold 20px ui-monospace, monospace';
         const prompt = pad ? 'PRESS (A) TO DRILL' : coarse ? 'TAP TO DRILL' : 'PRESS ANY KEY TO DRILL';
-        ctx.fillText(prompt, cw / 2, ch * 0.85);
+        ctx.fillText(prompt, cw / 2, ch * 0.80);
       }
 
       // Progression belongs on the title too, or a returning player has no sign
@@ -75,9 +75,14 @@ export function createTitle(assets, coarse, save) {
         ctx.fillStyle = '#8c85a0';
         const planets = save.cracked === 1 ? '1 planet cracked' : `${save.cracked} planets cracked`;
         const next = save.cracked > 0 ? `   next: planet ${save.cracked + 1}` : '';
-        ctx.fillText(`${save.runs} ${save.runs === 1 ? 'run' : 'runs'}   ${planets}${next}`, cw / 2, ch * 0.905);
+        ctx.fillText(`${save.runs} ${save.runs === 1 ? 'run' : 'runs'}   ${planets}${next}`, cw / 2, ch - 95);
         ctx.fillStyle = '#e8b02b';
-        ctx.fillText(`${save.credits} CR banked`, cw / 2, ch * 0.905 + 14);
+        ctx.fillText(`${save.credits} CR banked`, cw / 2, ch - 81);
+        if (save.best && (save.best.depth || save.best.haul)) {
+          ctx.fillStyle = '#6f6883';
+          ctx.fillText(`best ${save.best.depth}m   biggest haul ${save.best.haul} CR`,
+                       cw / 2, ch - 67);
+        }
       }
 
       ctx.fillStyle = '#6f6883';

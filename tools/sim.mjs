@@ -57,6 +57,7 @@ function run(seed, policy, levels = {}, planet = 0) {
   let t = 0, phase = 'descend';
   let fuelOuts = 0, hits = 0, deepest = 0;
   let escapeStart = null, dryTime = 0, dryInvulnTime = 0, blockedHits = 0;
+  let tremor = 3;
   let alienHits = 0, spitHits = 0, hazHits = 0, alienDmg = 0, hazDmg = 0, chamberHits = 0;
 
   while (t < MAX_SECONDS) {
@@ -162,6 +163,16 @@ function run(seed, policy, levels = {}, planet = 0) {
     if (player.dead) { log.deathFuel = Math.round(player.fuel); log.deathPhase = phase; log.deathDepth = player.ty; break; }
     if (phase === 'escape') {
       const spent = t - escapeStart;
+      // tremors drop rubble into the shaft, same as the game does
+      tremor -= DT;
+      if (tremor <= 0) {
+        tremor = 4.5 + Math.random() * 2.5;
+        for (let tries = 0, dropped = 0; tries < 24 && dropped < 3; tries++) {
+          const ty = player.ty - 4 - Math.floor(Math.random() * 10);
+          const tx = player.tx + Math.floor(Math.random() * 3) - 1;
+          if (ty >= 4 && world.collapse(tx, ty)) dropped++;
+        }
+      }
       if (player.ty <= 3) { log.escaped = true; log.escapeSecs = +spent.toFixed(1); break; }
       if (spent > diff.escape) { log.escapeSecs = +spent.toFixed(1); log.tooSlow = true; break; }
     }

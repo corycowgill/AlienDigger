@@ -86,7 +86,7 @@ function reset(seed = Date.now() & 0xffff) {
   fx.clear();
   cam = { x: 0, y: 0 };
   state = {
-    time: 0, escaping: false, escapeLeft: diff.escape, shake: 0,
+    time: 0, escaping: false, escapeLeft: diff.escape, shake: 0, tremor: 3,
     over: null,           // 'dead' | 'won' | 'boom'
     banked: 0,           // set once when the run ends
   };
@@ -178,6 +178,49 @@ function drawTerrain() {
       : 'rgba(255,190,80,' + (0.12 + f * 0.35) + ')';
     ctx.fillRect(Math.round(t.x * TILE - cam.x), Math.round(t.y * TILE - cam.y), TILE, TILE);
   }
+}
+
+// Depth darkness. The drill carries its own light and the dark closes in as it
+// goes down, which is the one atmospheric lever a game set 200m underground gets
+// for free and was not using -- the magma layer was lit exactly like the
+// topsoil. Rendered once into an offscreen canvas per radius step and blitted,
+// so no gradient is allocated per frame.
+const light = document.createElement('canvas');
+const lctx = light.getContext('2d');
+let lightKey = null;
+
+function buildLight(radius, dark) {
+  const size = radius * 2;
+  light.width = size;
+  light.height = size;
+  lctx.clearRect(0, 0, size, size);
+  const g = lctx.createRadialGradient(radius, radius, radius * 0.30,
+                                      radius, radius, radius);
+  g.addColorStop(0, 'rgba(6,3,14,0)');
+  g.addColorStop(0.62, `rgba(6,3,14,${(dark * 0.45).toFixed(3)})`);
+  g.addColorStop(1, `rgba(6,3,14,${dark.toFixed(3)})`);
+  lctx.fillStyle = g;
+  lctx.fillRect(0, 0, size, size);
+}
+
+function drawLight() {
+  const t = Math.max(0, Math.min(1, (player.ty - 6) / (CORE_TOP - 6)));
+  const radius = Math.round(360 - t * 170);
+  const dark = +(0.30 + t * 0.52).toFixed(2);
+  const key = radius + ':' + dark;
+  if (key !== lightKey) { buildLight(radius, dark); lightKey = key; }
+
+  const cx = Math.round(player.px + TILE / 2 - cam.x);
+  const cy = Math.round(player.py + TILE / 2 - cam.y);
+  const x0 = cx - radius, y0 = cy - radius;
+  ctx.drawImage(light, x0, y0);
+
+  // everything outside the lit disc is flat dark
+  ctx.fillStyle = `rgba(6,3,14,${dark})`;
+  if (x0 > 0) ctx.fillRect(0, VIEW_TOP, x0, CH - VIEW_TOP);
+  if (x0 + light.width < CW) ctx.fillRect(x0 + light.width, VIEW_TOP, CW - (x0 + light.width), CH - VIEW_TOP);
+  if (y0 > VIEW_TOP) ctx.fillRect(Math.max(0, x0), VIEW_TOP, Math.min(CW, light.width), y0 - VIEW_TOP);
+  if (y0 + light.height < CH) ctx.fillRect(Math.max(0, x0), y0 + light.height, Math.min(CW, light.width), CH - (y0 + light.height));
 }
 
 function frameOf(frames, t, fps = 8) {
@@ -395,6 +438,31 @@ function update(dt) {
 
   if (state.escaping) {
     state.escapeLeft -= dt;
+
+    // Three fusion charges are armed under a planet, so the way out does not
+    // stay the way in. Tremors drop rubble into the shaft above the drill,
+    // which is soft to cut but costs seconds against a clock that is already
+    // running -- the climb was a pure retrace of ground already cleared, which
+    // made the most dramatic phase of the run the least interesting one.
+    state.tremor -= dt;
+    if (state.tremor <= 0) {
+      state.tremor = 4.5 + Math.random() * 2.5;
+      let dropped = 0;
+      for (let tries = 0; tries < 24 && dropped < 3; tries++) {
+        const y = player.ty - 4 - Math.floor(Math.random() * 10);
+        const x = player.tx + Math.floor(Math.random() * 3) - 1;
+        if (y < 4) continue;
+        if (world.collapse(x, y)) {
+          dropped++;
+          fx.spawn('dustpuff', x * TILE + 16, y * TILE + 16);
+        }
+      }
+      if (dropped) {
+        state.shake = Math.max(state.shake, 0.6);
+        audio.hurt();
+      }
+    }
+
     if (player.ty <= 3) {
       state.over = 'won';
     } else if (state.escapeLeft <= 0) {
@@ -494,6 +562,7 @@ function render() {
   drawEntities();
   drawPlayer();
   fx.draw(ctx, cam);
+  drawLight();
   ctx.restore();
 
   drawHud(ctx, player, state, CW, audio.muted, STRATA, CORE_TOP + 7, diff);

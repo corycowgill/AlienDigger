@@ -64,21 +64,45 @@ export class World {
     this.hp = new Float32Array(W * D);          // drill progress per tile
 
     const cave = smoothNoise(rand, W, D, 7);
+    // A second, finer noise field picks tile variants and blends the strata
+    // boundaries. Variants used to be drawn uniformly at random, which scattered
+    // six unrelated textures across every layer and made the rock read as
+    // static -- worst in magma, where bright molten tiles and dark runed bedrock
+    // landed side by side with no logic. Driving them from noise instead makes
+    // similar tiles cluster into patches, the way real strata bed.
+    const grain = smoothNoise(rand, W, D, 3.2);
+    const edgeNoise = smoothNoise(rand, W, D, 2.4);
 
     for (let y = 0; y < D; y++) {
-      const s = strataAt(y);
+      const si = STRATA.findIndex((b) => y < b.depth);
+      const s = STRATA[si < 0 ? STRATA.length - 1 : si];
+      const prevDepth = si > 0 ? STRATA[si - 1].depth : 0;
+
       for (let x = 0; x < W; x++) {
         const i = y * W + x;
-        this.variant[i] = Math.floor(rand() * 6);
+        this.variant[i] = Math.min(5, Math.floor(grain(x, y) * 6));
 
         // open sky above the surface, an open room at the core
         if (y < 3 || y >= CORE_TOP + 3) { this.tiles[i] = EMPTY; continue; }
+
+        // Bleed the two strata into each other near their boundary, so the
+        // change of rock is a ragged seam rather than a ruled line across the
+        // screen. Hardness still steps cleanly; this is purely what you see.
+        let row = s.row;
+        const toNext = s.depth - y;
+        const fromPrev = y - prevDepth;
+        const e = edgeNoise(x, y);
+        if (toNext <= 3 && si < STRATA.length - 1 && e > 0.30 + toNext * 0.17) {
+          row = STRATA[si + 1].row;
+        } else if (fromPrev < 3 && si > 0 && e < 0.30 - fromPrev * 0.07) {
+          row = STRATA[si - 1].row;
+        }
 
         // caves thin out with depth so the descent stays a dig, not a fall
         const openness = cave(x, y);
         const threshold = 0.72 + (y / D) * 0.16;
         const edge = x < 2 || x > W - 3;          // keep the shaft walls solid
-        this.tiles[i] = (!edge && openness > threshold) ? EMPTY : s.row;
+        this.tiles[i] = (!edge && openness > threshold) ? EMPTY : row;
         this.hp[i] = s.hardness * hardnessScale;
       }
     }
@@ -148,6 +172,19 @@ export class World {
   hardness(x, y) {
     if (!this.inBounds(x, y)) return Infinity;
     return this.hp[this.idx(x, y)];
+  }
+
+  // Collapse an open tile back to rubble: soft to cut, but it is in the way.
+  // Used by the tremors that run once the charges are armed.
+  collapse(x, y) {
+    if (!this.inBounds(x, y)) return false;
+    const i = this.idx(x, y);
+    if (this.tiles[i] !== EMPTY) return false;
+    this.tiles[i] = strataAt(y).row;
+    this.hp[i] = 0.45;
+    this.ore[i] = -1;
+    this.revision++;
+    return true;
   }
 
   // Returns the ore tier freed by the dig, or -1.

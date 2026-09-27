@@ -70,6 +70,10 @@ burns it slowly, and running dry starts eating your hull. Fuel cells and repair
 kits are scattered through the caves, so the descent is a supply problem as much
 as a dig.
 
+Once the charges are armed the way out stops being the way in: tremors drop
+rubble into the shaft above you. It cuts easily, but the clock is running, so
+the climb is something you play rather than hold a key through.
+
 Heat is the other clock. Deep rock heats the bit and a redline eats your hull,
 but it sheds fast the moment you stop cutting -- so the deep game is paced, not
 ground through, and the ice shelf is worth crossing because it actively cools.
@@ -119,6 +123,14 @@ The repo is a static site with nothing to build, so any static host works. On
 | Publish Directory | `.` |
 
 `index.html` sits at the repo root, so the game loads at the site root.
+
+## Look
+
+The drill carries its own light and the dark closes in with depth. Tile variants
+are chosen from a noise field rather than at random, so similar rock clusters
+into patches instead of scattering six unrelated textures across every layer,
+and the seam between two strata is bled together over a few tiles rather than
+ruled straight across the screen.
 
 ## Rendering
 

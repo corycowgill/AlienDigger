@@ -78,8 +78,10 @@ const RIGHT = [
     lines: [
       'The Guardian blocks the charges. Drive',
       'into it and hold - it is far slower',
-      'than you, so back off and re-engage,',
-      'and a shield makes it free.',
+      'than you, so back off and re-engage.',
+      'Once armed, tremors drop rubble into',
+      'the shaft above you. It cuts easily,',
+      'but the clock is running.',
     ],
   },
   {

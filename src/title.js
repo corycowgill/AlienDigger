@@ -23,12 +23,14 @@ export function createTitle(assets, coarse) {
     t: 0,
     update(dt) { this.t += dt; },
 
-    // returns true once the viewer has asked to start
+    // returns true once the viewer has asked to start. The keydown/pointerdown
+    // listener above cannot see a gamepad, so its buttons are checked directly.
     wantsStart(input) {
-      return ready || input.direction() !== null;
+      return ready || input.direction() !== null
+          || input.tapped('plant') || input.tapped('restart');
     },
 
-    draw(ctx, cw, ch, viewTop) {
+    draw(ctx, cw, ch, viewTop, pad) {
       const strip = assets.bg[assets.backgrounds[3]];
       if (strip) {
         const scale = Math.max(cw / strip.width, (ch - viewTop) / strip.height);
@@ -62,7 +64,8 @@ export function createTitle(assets, coarse) {
       if (Math.floor(this.t * 1.6) % 2 === 0) {
         ctx.fillStyle = TRIM;
         ctx.font = 'bold 20px ui-monospace, monospace';
-        ctx.fillText(coarse ? 'TAP TO DRILL' : 'PRESS ANY KEY TO DRILL', cw / 2, ch * 0.85);
+        const prompt = pad ? 'PRESS (A) TO DRILL' : coarse ? 'TAP TO DRILL' : 'PRESS ANY KEY TO DRILL';
+        ctx.fillText(prompt, cw / 2, ch * 0.85);
       }
 
       ctx.fillStyle = '#5b556b';

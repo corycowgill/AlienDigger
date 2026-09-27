@@ -222,6 +222,10 @@ function nearestSocket() {
 }
 
 function update(dt) {
+  // Gamepads are polled, not evented, and this has to happen wherever the game
+  // steps -- the dev harness drives update() directly and never runs the loop.
+  input.poll();
+
   if (screen === 'title') {
     title.update(dt);
     if (title.wantsStart(input)) {
@@ -335,11 +339,11 @@ function render() {
   ctx.fillRect(0, 0, CW, CH);
 
   if (screen === 'title') {
-    title.draw(ctx, CW, CH, VIEW_TOP);
+    title.draw(ctx, CW, CH, VIEW_TOP, input.hasGamepad());
     return;
   }
   if (screen === 'foundry') {
-    foundry.draw(ctx, CW, CH, assets, lastRun);
+    foundry.draw(ctx, CW, CH, assets, lastRun, input.hasGamepad());
     return;
   }
 
@@ -359,8 +363,9 @@ function render() {
   if (!state.over && player.ty > CORE_TOP) {
     const socket = nearestSocket();
     let hint = null;
+    const pad = input.hasGamepad();
     if (guardianAlive()) hint = 'THE CORE GUARDIAN BLOCKS THE CHARGES';
-    else if (socket && player.charges > 0) hint = '[E] PLANT CHARGE';
+    else if (socket && player.charges > 0) hint = pad ? '(A) PLANT CHARGE' : '[E] PLANT CHARGE';
     if (hint) {
       ctx.fillStyle = guardianAlive() ? '#ff6b5b' : '#39d7e8';
       ctx.font = '13px ui-monospace, monospace';
@@ -375,7 +380,7 @@ function render() {
                 : state.over === 'dead' ? 'DRILL DESTROYED' : 'TOO SLOW';
     const why = state.over === 'boom' ? 'you were still inside  -  ' : '';
     drawBanner(ctx, CW, CH, title,
-               `${why}${state.banked} CR banked  -  press R for the Foundry`);
+               `${why}${state.banked} CR banked  -  ${input.hasGamepad() ? '(Y)' : 'press R'} for the Foundry`);
   }
 }
 

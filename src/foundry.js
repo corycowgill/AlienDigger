@@ -42,7 +42,7 @@ export function createFoundry(save) {
       return input.tapped('restart');
     },
 
-    draw(ctx, cw, ch, assets, lastRun) {
+    draw(ctx, cw, ch, assets, lastRun, pad) {
       ctx.fillStyle = '#0d0a14';
       ctx.fillRect(0, 0, cw, ch);
 
@@ -134,11 +134,12 @@ export function createFoundry(save) {
       if (Math.floor(this.t * 1.6) % 2 === 0) {
         ctx.fillStyle = TRIM;
         ctx.font = 'bold 15px ui-monospace, monospace';
-        ctx.fillText('[R] LAUNCH', cw / 2, ch - 30);
+        ctx.fillText(pad ? '(Y) LAUNCH' : '[R] LAUNCH', cw / 2, ch - 30);
       }
       ctx.fillStyle = '#5b556b';
       ctx.font = '10px ui-monospace, monospace';
-      ctx.fillText('up / down select    [E] install    [R] launch', cw / 2, ch - 12);
+      ctx.fillText(pad ? 'd-pad select    (A) install    (Y) launch'
+                       : 'up / down select    [E] install    [R] launch', cw / 2, ch - 12);
       ctx.textAlign = 'left';
     },
   };

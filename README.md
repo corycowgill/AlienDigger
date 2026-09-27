@@ -17,8 +17,15 @@ python -m http.server 8765
 # then open http://localhost:8765/
 ```
 
-**Desktop** — `WASD` / arrow keys to drill, `E` to plant a charge, `R` to restart.
-**Mobile** — an on-screen d-pad and buttons appear automatically on touch devices.
+**Keyboard** — `WASD` / arrow keys to drill, `E` to plant a charge, `R` to restart.
+
+**Gamepad** — an Xbox controller (or anything reporting the standard mapping)
+is picked up automatically: left stick or d-pad to drill, **A** to plant and to
+install upgrades, **Y** or **Start** to restart and to launch. Browsers only
+expose a pad after its first button press, so press something to wake it. A
+connected pad hides the touch controls.
+
+**Touch** — an on-screen d-pad and buttons appear automatically on touch devices.
 
 Add `?dev` to the URL for `dev.warp(depth)` and `dev.refuel()` in the console.
 

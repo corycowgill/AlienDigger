@@ -41,11 +41,51 @@ export const HAZARD_KINDS = [
   { row: 'voidpit',      dmg: 25, from: 118 },
 ];
 
-// Index into the minerals sheet's "pickup" row.
+// Index into the minerals sheet's "pickup" row, which has five frames. The last
+// three sat unused while the row was drawn for them, so each now does the thing
+// its art already promised: a tank that vents heat, a battery that shields, a
+// bit that overdrives.
 export const PICKUPS = [
-  { row: 0, kind: 'repair', amount: 34 },
-  { row: 1, kind: 'fuel', amount: 45 },
+  { row: 0, kind: 'repair', amount: 34, weight: 18 },
+  { row: 1, kind: 'fuel', amount: 45, weight: 66 },
+  { row: 2, kind: 'coolant', amount: 0, weight: 7, from: 55 },
+  { row: 3, kind: 'shield', amount: 9, weight: 5, from: 40 },
+  { row: 4, kind: 'boost', amount: 9, weight: 4, from: 40 },
 ];
+
+// Weighted draw, restricted to what is useful at this depth -- a coolant cell
+// in the topsoil would be a wasted find.
+function rollPickup(rand, y) {
+  const pool = PICKUPS.filter((k) => y >= (k.from || 0));
+  const total = pool.reduce((a, k) => a + k.weight, 0);
+  let r = rand() * total;
+  for (const k of pool) { r -= k.weight; if (r <= 0) return k; }
+  return pool[0];
+}
+
+// Shared so the game and the simulator cannot drift apart on what a pickup
+// does, which is exactly how the hazard rules went wrong once already.
+export function applyPickup(u, player) {
+  switch (u.kind.kind) {
+    case 'fuel':
+      player.fuel = Math.min(player.stats.maxFuel, player.fuel + u.kind.amount);
+      return 'fuel';
+    case 'repair':
+      player.hull = Math.min(player.stats.maxHull, player.hull + u.kind.amount);
+      return 'repair';
+    case 'coolant':
+      player.heat = 0;
+      return 'coolant';
+    case 'shield':
+      player.shield = Math.max(player.shield, u.kind.amount);
+      return 'shield';
+    case 'boost':
+      player.boost = Math.max(player.boost, u.kind.amount);
+      return 'boost';
+    default:
+      return null;
+  }
+}
 
 // Rates for content buried inside solid rock, per tile. Everything used to
 // spawn only in caves, but a descent is mostly drilling through rock: a straight
@@ -68,7 +108,7 @@ export function populate(world, rand) {
         // Buried: inert until the drill breaks the tile open, since the player
         // can only ever stand in a tile that has been dug out.
         if (rand() < BURIED_PICKUP) {
-          pickups.push({ kind: rand() < 0.68 ? PICKUPS[1] : PICKUPS[0], x, y, taken: false });
+          pickups.push({ kind: rollPickup(rand, y), x, y, taken: false });
         } else if (rand() < BURIED_HAZARD) {
           const pool = HAZARD_KINDS.filter((k) => y >= k.from);
           if (pool.length) {
@@ -97,8 +137,7 @@ export function populate(world, rand) {
       } else if (rand() < 0.10) {
         // fuel is the real clock, so cells have to be common enough that a
         // careful descent can always reach the core
-        const kind = rand() < 0.68 ? PICKUPS[1] : PICKUPS[0];
-        pickups.push({ kind, x, y, taken: false });
+        pickups.push({ kind: rollPickup(rand, y), x, y, taken: false });
       }
     }
   }

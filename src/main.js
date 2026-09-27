@@ -5,7 +5,7 @@ import { loadAssets } from './assets.js';
 import { createInput } from './input.js';
 import { TILE, W, D, CORE_TOP, EMPTY, STRATA, World, rng } from './world.js';
 import { createPlayer, updatePlayer, damage } from './player.js';
-import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard } from './entities.js';
+import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup } from './entities.js';
 import { createFx } from './fx.js';
 import { drawHud, drawBanner } from './hud.js';
 import { createTitle } from './title.js';
@@ -342,14 +342,11 @@ function update(dt) {
   });
 
   updatePickups(pickups, player, (u) => {
-    if (u.kind.kind === 'fuel') {
-      player.fuel = Math.min(player.stats.maxFuel, player.fuel + u.kind.amount);
-      audio.fuel();
-    } else {
-      player.hull = Math.min(player.stats.maxHull, player.hull + u.kind.amount);
-      audio.repair();
-    }
-    fx.spawn('sparkle', player.px + 16, player.py + 16);
+    const kind = applyPickup(u, player);
+    fx.spawn(kind === 'coolant' ? 'shieldhit' : 'sparkle', player.px + 16, player.py + 16);
+    if (kind === 'fuel') audio.fuel();
+    else if (kind === 'repair') audio.repair();
+    else audio.ore();
   });
 
   const socket = nearestSocket();
@@ -475,7 +472,9 @@ function render() {
     const socket = nearestSocket();
     let hint = null;
     const pad = input.hasGamepad();
-    if (guardianAlive()) hint = 'THE CORE GUARDIAN BLOCKS THE CHARGES';
+    // "Blocked" told the player they were stuck without telling them the way
+    // out, and the drill has no weapon to make ramming obvious.
+    if (guardianAlive()) hint = 'DRIVE INTO THE CORE GUARDIAN TO BREAK IT';
     else if (socket && player.charges > 0) hint = pad ? '(A) PLANT CHARGE' : '[E] PLANT CHARGE';
     if (hint) {
       ctx.fillStyle = guardianAlive() ? '#ff6b5b' : '#39d7e8';

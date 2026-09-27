@@ -10,7 +10,7 @@
 
 import { TILE, W, D, CORE_TOP, EMPTY, World, strataAt, rng } from '../src/world.js';
 import { createPlayer, updatePlayer, damage } from '../src/player.js';
-import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard } from '../src/entities.js';
+import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup } from '../src/entities.js';
 import { statsFor } from '../src/progress.js';
 
 const DT = 1 / 60;
@@ -69,10 +69,7 @@ function run(seed, policy, levels = {}) {
         player.cooling = player.heat > 25;
         input.set(null);
         updatePlayer(player, world, input, DT, noFx);
-        updatePickups(pickups, player, (u) => {
-          if (u.kind.kind === 'fuel') player.fuel = Math.min(player.stats.maxFuel, player.fuel + u.kind.amount);
-          else player.hull = Math.min(player.stats.maxHull, player.hull + u.kind.amount);
-        });
+        updatePickups(pickups, player, (u) => applyPickup(u, player));
         t += DT;
         continue;
       }
@@ -109,10 +106,7 @@ function run(seed, policy, levels = {}) {
           if (damage(player, a.kind.spitDmg, noFx)) { hits++; spitHits++; alienDmg += a.kind.spitDmg; if (player.ty > CORE_TOP) chamberHits++; }
         });
         ramAliens(aliens, player, DT, () => {});
-        updatePickups(pickups, player, (u) => {
-          if (u.kind.kind === 'fuel') player.fuel = Math.min(player.stats.maxFuel, player.fuel + u.kind.amount);
-          else player.hull = Math.min(player.stats.maxHull, player.hull + u.kind.amount);
-        });
+        updatePickups(pickups, player, (u) => applyPickup(u, player));
         if (player.dead) break;
         t += DT;
         continue;
@@ -159,10 +153,7 @@ function run(seed, policy, levels = {}) {
       if (typeof r === 'number') { hits++; hazHits++; hazDmg += r; if (player.ty > CORE_TOP) chamberHits++; }
       else if (r === null) blockedHits++;
     });
-    updatePickups(pickups, player, (u) => {
-      if (u.kind.kind === 'fuel') player.fuel = Math.min(player.stats.maxFuel, player.fuel + u.kind.amount);
-      else player.hull = Math.min(player.stats.maxHull, player.hull + u.kind.amount);
-    });
+    updatePickups(pickups, player, (u) => applyPickup(u, player));
 
     if (player.fuel <= 0) { dryTime += DT; if (player.invuln > 0) dryInvulnTime += DT; }
 

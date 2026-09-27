@@ -51,6 +51,10 @@ buy the margin back rather than starting with it -- a part-kitted drill clears
 
 ## How it plays
 
+Buried in the rock alongside fuel and repairs: coolant that dumps all heat, a
+shield that eats hits for a few seconds, and a bit overdrive. The Core Guardian
+has to be driven into -- there is no weapon -- before the charges will arm.
+
 Fuel is the real clock. Drilling burns it fast, travelling through open tunnel
 burns it slowly, and running dry starts eating your hull. Fuel cells and repair
 kits are scattered through the caves, so the descent is a supply problem as much

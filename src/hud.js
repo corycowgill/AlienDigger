@@ -120,6 +120,19 @@ export function drawHud(ctx, p, state, cw, muted, strata, maxDepth) {
     ctx.fillStyle = i < p.charges ? '#39d7e8' : '#2b2438';
     ctx.fillRect(824 + i * 16, 26, 11, 12);
   }
+  // Timed effects need a countdown or they are invisible: a shield that silently
+  // eats a hit reads as the hit having missed.
+  const buffs = [];
+  if (p.shield > 0) buffs.push(['SHIELD', p.shield, '#39d7e8']);
+  if (p.boost > 0) buffs.push(['OVERDRIVE', p.boost, '#e8b02b']);
+  buffs.forEach(([label, left, color], i) => {
+    const x = 14 + i * 116;
+    ctx.fillStyle = color;
+    ctx.font = 'bold 10px ui-monospace, monospace';
+    ctx.fillText(`${label} ${left.toFixed(1)}s`, x, 52);
+    ctx.fillRect(x, 55, Math.round(96 * Math.min(1, left / 9)), 2);
+  });
+
   if (muted) {
     ctx.fillStyle = '#6f6883';
     ctx.font = '10px ui-monospace, monospace';

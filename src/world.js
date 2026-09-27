@@ -153,7 +153,9 @@ export class World {
       if (placed >= 3) this.veins.push({ x: cx, y: cy, tier, size: placed });
     }
 
-    this.revision = 0;     // bumped on every dig, so a cached render knows
+    // Tiles changed since the renderer last looked. Draining this lets a dig
+    // repaint one tile instead of forcing a full cache rebuild.
+    this.dirty = [];
     this.chargeSockets = [];
     const cy = CORE_TOP + 7;
     for (let k = 0; k < 3; k++) {
@@ -183,7 +185,7 @@ export class World {
     this.tiles[i] = strataAt(y).row;
     this.hp[i] = 0.45;
     this.ore[i] = -1;
-    this.revision++;
+    this.dirty.push(x, y);
     return true;
   }
 
@@ -191,7 +193,7 @@ export class World {
   dig(x, y) {
     const i = this.idx(x, y);
     this.tiles[i] = EMPTY;
-    this.revision++;
+    this.dirty.push(x, y);
     const ore = this.ore[i];
     this.ore[i] = -1;
     return ore;

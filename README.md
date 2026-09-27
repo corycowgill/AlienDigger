@@ -144,6 +144,16 @@ floats off it, sized and pitched by tier; damage floats a number in the colour
 of whatever dealt it; any alien you have hurt carries a small health bar, and
 the Guardian a full one naming what it is doing.
 
+## Motion
+
+Short animation cycles ping-pong rather than wrap: a three-frame walk played
+0,1,2,0,1,2 snaps on the wrap, and 0,1,2,1 turns the same frames into a smooth
+there-and-back, which is most of what made them read as choppy. Tile-to-tile
+movement carries its overshoot into the next tile instead of discarding it,
+which used to stall the drill for a fraction of a tile at every single step. The
+camera uses frame-rate independent smoothing, so it lags the same amount at 30fps
+as at 60.
+
 ## Look
 
 The drill carries its own light and the dark closes in with depth. Tile variants
@@ -155,11 +165,17 @@ ruled straight across the screen.
 ## Rendering
 
 Terrain is drawn into an offscreen canvas and blitted, rather than issuing a
-drawImage per visible tile per frame. The cache is rebuilt only when the camera
-crosses a tile boundary or a tile is dug -- `world.revision` tracks the latter --
-so a continuous descent rebuilds a couple of times a second instead of sixty.
-Measured at the deepest, busiest point: mean frame 1.94ms to 0.49ms, p90 8.1ms
-to 0.7ms, and no frames over the 60fps budget where 2% had been.
+drawImage per visible tile per frame. The cache scrolls rather than rebuilding:
+crossing a tile boundary shifts the existing pixels and repaints only the strip
+that came into view, and a dug tile repaints just itself via `world.dirty`. The
+cache is sized to a whole number of tiles, which matters -- at 664px it was
+20.75 tiles tall, so the bottom row straddled the edge and a scroll left stale
+rock behind it in visible horizontal streaks.
+
+Measured at depth while drilling: mean frame 1.94ms to 0.38ms, p90 8.1ms to
+0.6ms, p99 19.8ms to 3.5ms. The p99 is the one that matters for how the game
+feels -- that is the periodic hitch, and it is what a full rebuild was costing
+several times a second.
 
 ## Balance tooling
 

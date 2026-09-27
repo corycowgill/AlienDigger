@@ -79,7 +79,7 @@ let screen = new URLSearchParams(location.search).has('dev') ? 'playing' : 'titl
 let world, player, aliens, hazards, pickups, props, state, cam, hazardAt, diff;
 // Terrain cache state. Declared up here because reset() runs at module load and
 // invalidates the cache, which would hit the temporal dead zone otherwise.
-let cacheOX = null, cacheOY = null, cacheRev = -1;
+let cacheOX = null, cacheOY = null;
 
 function reset(seed = Date.now() & 0xffff) {
   diff = difficultyFor(save.cracked);
@@ -132,28 +132,32 @@ function drawBackground() {
 // The cache is rebuilt only when the camera crosses a tile boundary or a tile
 // is dug, so a continuous descent rebuilds a couple of times a second instead
 // of sixty.
+// Sized to a whole number of tiles. It was CH + TILE*2 = 664px, which is 20.75
+// tiles, so the bottom row straddled the canvas edge and a scroll left an
+// 8-pixel band of stale rock behind it -- visible as horizontal streaks across
+// the lower half of the screen.
+const CACHE_COLS = Math.ceil((CW + TILE * 2) / TILE);
+const CACHE_ROWS = Math.ceil((CH + TILE * 2) / TILE);
+
 const terrain = document.createElement('canvas');
-terrain.width = CW + TILE * 2;
-terrain.height = CH + TILE * 2;
+terrain.width = CACHE_COLS * TILE;
+terrain.height = CACHE_ROWS * TILE;
 const tctx = terrain.getContext('2d');
 tctx.imageSmoothingEnabled = false;
 
-function buildTerrainCache(ox, oy) {
-  tctx.clearRect(0, 0, terrain.width, terrain.height);
-  const cols = Math.ceil(terrain.width / TILE);
-  const rows = Math.ceil(terrain.height / TILE);
-
-  for (let ty = 0; ty < rows; ty++) {
+function paintTiles(ox, oy, x0, y0, x1, y1) {
+  for (let ty = y0; ty < y1; ty++) {
     const y = oy + ty;
-    if (y < 0 || y >= D) continue;
-    for (let tx = 0; tx < cols; tx++) {
+    for (let tx = x0; tx < x1; tx++) {
       const x = ox + tx;
-      if (x < 0 || x >= W) continue;
+      const sx = tx * TILE, sy = ty * TILE;
+      tctx.clearRect(sx, sy, TILE, TILE);
+      if (x < 0 || x >= W || y < 0 || y >= D) continue;
+
       const i = world.idx(x, y);
       const row = world.tiles[i];
       if (row === EMPTY) continue;
 
-      const sx = tx * TILE, sy = ty * TILE;
       const img = assets.tile(row, world.variant[i]);
       if (img) tctx.drawImage(img, sx, sy, TILE, TILE);
 
@@ -164,15 +168,71 @@ function buildTerrainCache(ox, oy) {
       }
     }
   }
-  cacheOX = ox; cacheOY = oy; cacheRev = world.revision;
+}
+
+const scratch = document.createElement('canvas');
+scratch.width = terrain.width;
+scratch.height = terrain.height;
+const sctx = scratch.getContext('2d');
+sctx.imageSmoothingEnabled = false;
+
+// Scroll the cache rather than rebuilding it. A full rebuild is ~570 tiles in a
+// single frame, and the camera crosses a tile boundary several times a second
+// while descending, so that spike landed constantly. Shifting the existing
+// pixels and repainting only the strip that just came into view turns it into
+// about 30 tiles.
+function syncTerrainCache(ox, oy) {
+  if (cacheOX === null
+      || Math.abs(ox - cacheOX) >= CACHE_COLS || Math.abs(oy - cacheOY) >= CACHE_ROWS) {
+    paintTiles(ox, oy, 0, 0, CACHE_COLS, CACHE_ROWS);
+    cacheOX = ox; cacheOY = oy;
+    world.dirty.length = 0;
+    return;
+  }
+
+  if (ox === cacheOX && oy === cacheOY) {
+    // just the tiles that changed since last frame
+    for (let k = 0; k < world.dirty.length; k += 2) {
+      const tx = world.dirty[k] - ox, ty = world.dirty[k + 1] - oy;
+      if (tx >= 0 && tx < CACHE_COLS && ty >= 0 && ty < CACHE_ROWS) {
+        paintTiles(ox, oy, tx, ty, tx + 1, ty + 1);
+      }
+    }
+    world.dirty.length = 0;
+    return;
+  }
+
+  const dx = ox - cacheOX, dy = oy - cacheOY;
+  // Shift through a scratch buffer rather than drawing the cache onto itself.
+  // The self-copy left horizontal streaks of stale rows: a canvas is allowed to
+  // be its own source, but combining that with a 'copy' composite is asking for
+  // trouble and it delivered.
+  sctx.clearRect(0, 0, scratch.width, scratch.height);
+  sctx.drawImage(terrain, 0, 0);
+  tctx.clearRect(0, 0, terrain.width, terrain.height);
+  tctx.drawImage(scratch, -dx * TILE, -dy * TILE);
+
+  // repaint whatever the shift exposed
+  if (dx > 0) paintTiles(ox, oy, CACHE_COLS - dx, 0, CACHE_COLS, CACHE_ROWS);
+  else if (dx < 0) paintTiles(ox, oy, 0, 0, -dx, CACHE_ROWS);
+  if (dy > 0) paintTiles(ox, oy, 0, CACHE_ROWS - dy, CACHE_COLS, CACHE_ROWS);
+  else if (dy < 0) paintTiles(ox, oy, 0, 0, CACHE_COLS, -dy);
+
+  // anything dug this frame may have been inside the region we just shifted
+  for (let k = 0; k < world.dirty.length; k += 2) {
+    const tx = world.dirty[k] - ox, ty = world.dirty[k + 1] - oy;
+    if (tx >= 0 && tx < CACHE_COLS && ty >= 0 && ty < CACHE_ROWS) {
+      paintTiles(ox, oy, tx, ty, tx + 1, ty + 1);
+    }
+  }
+  world.dirty.length = 0;
+  cacheOX = ox; cacheOY = oy;
 }
 
 function drawTerrain() {
   const ox = Math.floor(cam.x / TILE) - 1;
   const oy = Math.floor(cam.y / TILE) - 1;
-  if (ox !== cacheOX || oy !== cacheOY || world.revision !== cacheRev) {
-    buildTerrainCache(ox, oy);
-  }
+  syncTerrainCache(ox, oy);
   ctx.drawImage(terrain, Math.round(ox * TILE - cam.x), Math.round(oy * TILE - cam.y));
 
   // The tile being ground is dynamic, so it stays a per-frame overlay.
@@ -232,9 +292,17 @@ function drawLight() {
   if (y0 + light.height < CH) ctx.fillRect(Math.max(0, x0), y0 + light.height, Math.min(CW, light.width), CH - (y0 + light.height));
 }
 
+// Short cycles ping-pong rather than wrapping. A three-frame walk played
+// 0,1,2,0,1,2 snaps hard on the wrap, which is most of why these read as choppy;
+// 0,1,2,1 turns the same three frames into a smooth there-and-back. Two-frame
+// cycles are already symmetric, so they just alternate.
 function frameOf(frames, t, fps = 8) {
   if (!frames || !frames.length) return null;
-  return frames[Math.floor(t * fps) % frames.length];
+  const n = frames.length;
+  if (n < 3) return frames[Math.floor(t * fps) % n];
+  const span = (n - 1) * 2;
+  const i = Math.floor(t * fps) % span;
+  return frames[i < n ? i : span - i];
 }
 
 function drawSprite(img, px, py, box) {
@@ -258,7 +326,7 @@ function drawEntities() {
   for (const h of hazards) {
     if (Math.abs(h.y - player.ty) > 22) continue;
     if (world.solid(h.x, h.y)) continue;      // still buried
-    drawSprite(frameOf(assets.anim.hazards[h.kind.row], h.t, 6),
+    drawSprite(frameOf(assets.anim.hazards[h.kind.row], h.t, 9),
                h.x * TILE, h.y * TILE, TILE);
   }
   for (const u of pickups) {
@@ -273,7 +341,7 @@ function drawEntities() {
   for (const s of world.chargeSockets) {
     const row = s.planted ? (state.escaping ? 'armed' : 'planted') : 'coreprop';
     const frames = assets.anim.props[row];
-    const img = s.planted ? frameOf(frames, state.time, 8) : (frames && frames[0]);
+    const img = s.planted ? frameOf(frames, state.time, 10) : (frames && frames[0]);
     drawSprite(img, s.x * TILE, s.y * TILE, TILE * 1.4);
   }
   for (const a of aliens) {
@@ -285,7 +353,7 @@ function drawEntities() {
     const inRock = world.solid(a.x, a.y);
     const dormant = a.kind.ambush && !a.woke;
     const frames = assets.anim.aliens[a.kind.row];
-    const img = dormant ? (frames && frames[0]) : frameOf(frames, a.t, 7);
+    const img = dormant ? (frames && frames[0]) : frameOf(frames, a.t, 10);
 
     // The boss telegraphs: a ring while it winds up so the blast radius is
     // visible, and a glow while it is open and worth committing to.
@@ -673,8 +741,12 @@ function update(dt) {
   // camera trails the drill, clamped to the world
   const targetX = player.px + TILE / 2 - CW / 2;
   const targetY = player.py + TILE / 2 - (CH + VIEW_TOP) / 2;
-  cam.x += (targetX - cam.x) * Math.min(1, dt * 8);
-  cam.y += (targetY - cam.y) * Math.min(1, dt * 8);
+  // Exponential smoothing done frame-rate independently. The old form moved a
+  // fixed fraction per frame, so the camera lagged differently at 30fps than at
+  // 60 and jittered whenever a frame ran long.
+  const follow = 1 - Math.exp(-9 * dt);
+  cam.x += (targetX - cam.x) * follow;
+  cam.y += (targetY - cam.y) * follow;
   cam.x = Math.max(0, Math.min(W * TILE - CW, cam.x));
   cam.y = Math.max(-VIEW_TOP, Math.min(D * TILE - CH, cam.y));
 }

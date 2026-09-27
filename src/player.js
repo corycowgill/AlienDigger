@@ -41,6 +41,7 @@ export function createPlayer(levels) {
     hull: stats.maxHull,
     fuel: stats.maxFuel,
     heat: 0,
+    carry: 0,        // movement time left over from the last tile
     boost: 0,        // drill-chip overdrive, seconds remaining
     shield: 0,       // shield-battery cover, seconds remaining
     minerals: [0, 0, 0, 0, 0],
@@ -79,7 +80,8 @@ export function updatePlayer(p, world, input, dt, fx) {
 
   // finish an in-progress move before accepting new input
   if (p.moving) {
-    p.moving.t += dt / (p.stats.moveTime * (p.moving.diag ? DIAG : 1));
+    const span = p.stats.moveTime * (p.moving.diag ? DIAG : 1);
+    p.moving.t += dt / span;
     const t = Math.min(1, p.moving.t);
     p.px = p.moving.fromX * TILE + (p.moving.toX - p.moving.fromX) * TILE * t;
     p.py = p.moving.fromY * TILE + (p.moving.toY - p.moving.fromY) * TILE * t;
@@ -87,9 +89,14 @@ export function updatePlayer(p, world, input, dt, fx) {
     if (t >= 1) {
       p.tx = p.moving.toX; p.ty = p.moving.toY;
       p.px = p.tx * TILE; p.py = p.ty * TILE;
+      // Carry the overshoot into the next tile instead of discarding it. A
+      // frame that ended 30% past the boundary used to throw that 30% away,
+      // which stalled the drill for a fraction of a tile every single step and
+      // read as a stutter while travelling.
+      p.carry = (p.moving.t - 1) * span;
       p.moving = null;
     }
-    p.frame += dt * 14;
+    p.frame += dt * 16;
     return;
   }
 
@@ -128,7 +135,7 @@ export function updatePlayer(p, world, input, dt, fx) {
     p.drillProgress += p.stats.drillRate * (p.boost > 0 ? 1.7 : 1)
                      * (p.fuel <= 0 ? DRY_DRILL_SCALE : 1) * dt;
     p.fuel -= FUEL_DRILL * dt;
-    p.frame += dt * 22;
+    p.frame += dt * 24;
 
     if (p.drillProgress % 0.35 < dt * p.stats.drillRate) {
       fx.spawn('debris', nx * TILE + TILE / 2, ny * TILE + TILE / 2);

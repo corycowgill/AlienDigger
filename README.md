@@ -62,8 +62,10 @@ bigger haul. That trade is the decision a run is actually about; the background
 scatter is just what you pick up on the way past.
 
 Buried in the rock alongside fuel and repairs: coolant that dumps all heat, a
-shield that eats hits for a few seconds, and a bit overdrive. The Core Guardian
-has to be driven into -- there is no weapon -- before the charges will arm.
+shield that eats hits for a few seconds, and a bit overdrive. The Core Guardian has to be driven into -- there is no weapon -- before the
+charges will arm, and it runs a cycle worth reading: its plating shrugs off
+ramming, it opens for a window worth committing to, and it telegraphs a slam
+with a ring you want to be outside. A bar over its head shows which.
 
 Fuel is the real clock. Drilling burns it fast, travelling through open tunnel
 burns it slowly, and running dry starts eating your hull. Fuel cells and repair

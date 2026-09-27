@@ -76,12 +76,13 @@ const RIGHT = [
   {
     head: 'THE CORE', color: TRIM,
     lines: [
-      'The Guardian blocks the charges. Drive',
-      'into it and hold - it is far slower',
-      'than you, so back off and re-engage.',
+      'The Guardian blocks the charges. Watch',
+      'the bar over its head: ARMOURED shrugs',
+      'off ramming, OPEN is your window, and',
+      'SLAM INCOMING means clear the ring.',
       'Once armed, tremors drop rubble into',
-      'the shaft above you. It cuts easily,',
-      'but the clock is running.',
+      'the shaft above. It cuts easily, but',
+      'the clock is running.',
     ],
   },
   {

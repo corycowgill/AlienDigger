@@ -157,9 +157,10 @@ export function populate(world, rand, density = 1) {
   // roughly 45 hull -- losable if you arrive hurt, which is what the repair
   // kits are for.
   aliens.push({
-    kind: { row: 'guardian', hp: 24, dmg: 9, speed: 1.2, boss: true },
-    x: gx, y: gy, hp: 24, t: 0, dx: 1,
+    kind: { row: 'guardian', hp: 26, dmg: 9, slam: 12, speed: 1.2, boss: true },
+    x: gx, y: gy, hp: 26, t: 0, dx: 1,
     px: gx * TILE, py: gy * TILE, boss: true,
+    maxHp: 26, phase: 'armored', phaseT: GUARD_PHASE.armored,
   });
 
   // The richest veins are guarded, which is what turns "there is treasure over
@@ -210,11 +211,39 @@ export function populate(world, rand, density = 1) {
   return { aliens, hazards, pickups };
 }
 
-export function updateAliens(aliens, world, player, dt, onHit, onSpit) {
+// The Guardian used to be one verb: drive in and hold until it died. It now
+// runs a cycle, so the fight has a rhythm to read -- its plating shrugs off
+// ramming, it opens up for a window worth committing to, and it telegraphs a
+// slam that punishes anyone still standing on it.
+export const GUARD_PHASE = { armored: 1.8, exposed: 2.8, windup: 0.75, slam: 0.25 };
+const GUARD_ORDER = ['armored', 'exposed', 'windup', 'slam'];
+
+function updateGuardian(a, player, dt, onSlam) {
+  a.phaseT -= dt;
+  if (a.phaseT <= 0) {
+    const next = GUARD_ORDER[(GUARD_ORDER.indexOf(a.phase) + 1) % GUARD_ORDER.length];
+    a.phase = next;
+    a.phaseT = GUARD_PHASE[next];
+    if (next === 'slam') {
+      const reach = Math.abs(a.x - player.tx) <= 2 && Math.abs(a.y - player.ty) <= 2;
+      onSlam?.(a, reach);
+    }
+  }
+}
+
+// How much of a ram lands, given what the boss is currently doing.
+export function ramScale(a) {
+  if (!a.boss) return 1;
+  return a.phase === 'exposed' ? 1.5 : a.phase === 'armored' ? 0.45 : 0.6;
+}
+
+export function updateAliens(aliens, world, player, dt, onHit, onSpit, onSlam) {
+  for (const a of aliens) if (a.hurt) a.hurt = Math.max(0, a.hurt - dt);
   for (const a of aliens) {
     a.t += dt;
     const near = Math.abs(a.y - player.ty) < 24;
     if (!near) continue;
+    if (a.boss && a.hp > 0) updateGuardian(a, player, dt, onSlam);
 
     // The Spitter is the one alien that does not have to reach you. It needs a
     // clear line down a tunnel, which makes it a reason to pick a different
@@ -302,8 +331,13 @@ export function ramAliens(aliens, player, dt, onKill) {
     if (a.hp <= 0) continue;
     if (a.x !== player.tx || a.y !== player.ty) continue;
     // a rock crab's shell is the point of it
-    const through = 1 - (a.kind.armor || 0);
-    a.hp -= (player.moving || player.drilling ? 14 : 0) * through * dt;
+    const through = (1 - (a.kind.armor || 0)) * ramScale(a);
+    const bite = (player.moving || player.drilling ? 14 : 0) * through * dt;
+    a.hp -= bite;
+    // Flagged so the renderer can flash it and show the bar reacting: without
+    // this you drive into the boss, take damage and cannot tell whether you
+    // are achieving anything at all.
+    if (bite > 0) a.hurt = 0.12;
     if (a.hp <= 0) onKill(a);
   }
 }

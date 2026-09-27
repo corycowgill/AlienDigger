@@ -94,9 +94,22 @@ function run(seed, policy, levels = {}, planet = 0) {
       // The Guardian gates the charges, so it has to be rammed down first.
       const boss = aliens.find((a) => a.boss && a.hp > 0);
       if (boss) {
-        if (Math.abs(boss.x - player.tx) > 0) dir = boss.x < player.tx ? 'left' : 'right';
-        else if (Math.abs(boss.y - player.ty) > 0) dir = boss.y < player.ty ? 'up' : 'down';
-        else dir = 'down';
+        // Play the rhythm: clear the blast radius while it winds up, close and
+        // commit while it is open. Standing on it the whole fight is what the
+        // phases exist to punish.
+        const dx = player.tx - boss.x, dy = player.ty - boss.y;
+        const danger = boss.phase === 'windup' || boss.phase === 'slam';
+        if (danger) {
+          dir = Math.abs(dx) >= Math.abs(dy)
+            ? (dx >= 0 ? 'right' : 'left')
+            : (dy >= 0 ? 'down' : 'up');
+        } else if (Math.abs(boss.x - player.tx) > 0) {
+          dir = boss.x < player.tx ? 'left' : 'right';
+        } else if (Math.abs(boss.y - player.ty) > 0) {
+          dir = boss.y < player.ty ? 'up' : 'down';
+        } else {
+          dir = 'down';
+        }
         input.set(dir);
         const fb = player.fuel;
         updatePlayer(player, world, input, DT, noFx);
@@ -106,7 +119,9 @@ function run(seed, policy, levels = {}, planet = 0) {
           if (damage(player, a.kind.dmg, noFx)) { hits++; alienHits++; alienDmg += a.kind.dmg; if (player.ty > CORE_TOP) chamberHits++; } else blockedHits++;
         }, (a) => {
           if (damage(player, a.kind.spitDmg, noFx)) { hits++; spitHits++; alienDmg += a.kind.spitDmg; if (player.ty > CORE_TOP) chamberHits++; }
-        });
+        }, (a, reach) => {
+      if (reach && damage(player, a.kind.slam, noFx)) { hits++; alienDmg += a.kind.slam; chamberHits++; }
+    });
         ramAliens(aliens, player, DT, () => {});
         updatePickups(pickups, player, (u) => applyPickup(u, player));
         if (player.dead) break;
@@ -148,6 +163,8 @@ function run(seed, policy, levels = {}, planet = 0) {
       // ranged spit is its own, weaker attack -- without this the harness
       // measures a game where the one ranged enemy does no damage at all
       if (damage(player, a.kind.spitDmg, noFx)) { hits++; spitHits++; alienDmg += a.kind.spitDmg; if (player.ty > CORE_TOP) chamberHits++; }
+    }, (a, reach) => {
+      if (reach && damage(player, a.kind.slam, noFx)) { hits++; alienDmg += a.kind.slam; chamberHits++; }
     });
     ramAliens(aliens, player, DT, () => {});
     updateHazards(hazards, player, DT, (h) => {

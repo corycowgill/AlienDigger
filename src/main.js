@@ -269,10 +269,65 @@ function drawEntities() {
     const frames = assets.anim.aliens[a.kind.row];
     const img = dormant ? (frames && frames[0]) : frameOf(frames, a.t, 7);
 
+    // The boss telegraphs: a ring while it winds up so the blast radius is
+    // visible, and a glow while it is open and worth committing to.
+    if (a.boss && a.hp > 0) {
+      const cx = a.px + TILE / 2 - cam.x, cy = a.py + TILE / 2 - cam.y;
+      if (a.phase === 'windup') {
+        const grow = 1 - a.phaseT / 0.75;
+        ctx.strokeStyle = `rgba(255,70,50,${0.35 + grow * 0.5})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(cx, cy, TILE * 2.5 * (0.55 + grow * 0.45), 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (a.phase === 'exposed') {
+        ctx.fillStyle = `rgba(47,210,232,${0.10 + Math.sin(state.time * 9) * 0.06})`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, TILE * 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
     if (inRock) ctx.globalAlpha = 0.45;
     else if (dormant) ctx.globalAlpha = 0.7;
     drawSprite(img, a.px, a.py, a.boss ? TILE * 3 : TILE * 1.3);
     ctx.globalAlpha = 1;
+
+    // A flinch on every landed hit. Anything you can damage should show it,
+    // but it matters most on the boss, where without it you cannot tell a
+    // fight you are winning from one you are losing.
+    if (a.hurt > 0) {
+      const box = a.boss ? TILE * 3 : TILE * 1.3;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(0.55, a.hurt * 4);
+      ctx.fillStyle = '#ffd9a0';
+      ctx.fillRect(Math.round(a.px - cam.x + (TILE - box) / 2),
+                   Math.round(a.py - cam.y + TILE - box), box, box);
+      ctx.restore();
+    }
+
+    // Boss health, floating above it, so progress is legible from the cockpit.
+    if (a.boss && a.hp > 0) {
+      const w = 104, bx = Math.round(a.px + TILE / 2 - cam.x - w / 2);
+      const by = Math.round(a.py - cam.y - TILE * 1.5);
+      const frac = Math.max(0, a.hp / a.maxHp);
+      ctx.fillStyle = 'rgba(8,5,16,0.85)';
+      ctx.fillRect(bx - 2, by - 2, w + 4, 12);
+      ctx.fillStyle = '#3a1410';
+      ctx.fillRect(bx, by, w, 8);
+      ctx.fillStyle = a.phase === 'exposed' ? '#ff7b3a' : '#8c3a2a';
+      ctx.fillRect(bx, by, Math.round(w * frac), 8);
+      ctx.strokeStyle = a.phase === 'exposed' ? '#2fd2e8' : '#5b4a52';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx - 2.5, by - 2.5, w + 5, 13);
+      ctx.fillStyle = a.phase === 'exposed' ? '#2fd2e8' : '#8c85a0';
+      ctx.font = 'bold 9px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(a.phase === 'exposed' ? 'OPEN' : a.phase === 'windup' ? 'SLAM INCOMING' : 'ARMOURED',
+                   bx + w / 2, by - 6);
+      ctx.textAlign = 'left';
+    }
   }
 }
 
@@ -398,6 +453,14 @@ function update(dt) {
       fx.spawn('acidsplash', player.px + 16, player.py + 16);
       audio.hurt();
       state.shake = Math.max(state.shake, 0.4);
+    }
+  }, (a, reach) => {
+    // the slam lands wherever you are standing when the windup ends
+    fx.spawn('explosion', a.px + 16, a.py + 16, 1.6);
+    state.shake = Math.max(state.shake, reach ? 1.1 : 0.5);
+    audio.explode();
+    if (reach && damage(player, a.kind.slam, fx)) {
+      fx.spawn('flash', player.px + 16, player.py + 16);
     }
   });
   ramAliens(aliens, player, dt, (a) => {
@@ -573,7 +636,12 @@ function render() {
     const pad = input.hasGamepad();
     // "Blocked" told the player they were stuck without telling them the way
     // out, and the drill has no weapon to make ramming obvious.
-    if (guardianAlive()) hint = 'DRIVE INTO THE CORE GUARDIAN TO BREAK IT';
+    if (guardianAlive()) {
+      const g = aliens.find((a) => a.boss);
+      hint = g && g.phase === 'exposed' ? 'THE GUARDIAN IS OPEN - RAM IT NOW'
+           : g && g.phase === 'windup' ? 'GET CLEAR'
+           : 'WAIT FOR THE GUARDIAN TO OPEN UP';
+    }
     else if (socket && player.charges > 0) hint = pad ? '(A) PLANT CHARGE' : '[E] PLANT CHARGE';
     if (hint) {
       ctx.fillStyle = guardianAlive() ? '#ff6b5b' : '#39d7e8';

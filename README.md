@@ -128,6 +128,14 @@ The repo is a static site with nothing to build, so any static host works. On
 
 `index.html` sits at the repo root, so the game loads at the site root.
 
+## Teaching
+
+Six first-time hints fire the moment the thing they explain is actually
+happening -- heat climbing, the tank running low, a tile flashing red, ore
+coming up in a vein, the Guardian's cycle -- then never again. They are stored
+in the save, not the run, so a hint earned in a run you lost stays learned.
+Nothing waits for input; the help screen (`H`) is still the full reference.
+
 ## Feedback
 
 Anything that changes your state says so where you are looking, which is the

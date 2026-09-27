@@ -58,7 +58,7 @@ const BASE = {
 };
 
 export function emptySave() {
-  return { credits: 0, levels: Object.fromEntries(UPGRADES.map((u) => [u.key, 0])), runs: 0, cracked: 0 };
+  return { credits: 0, levels: Object.fromEntries(UPGRADES.map((u) => [u.key, 0])), runs: 0, cracked: 0, taught: {} };
 }
 
 export function load() {
@@ -70,6 +70,7 @@ export function load() {
     save.credits = Math.max(0, got.credits | 0);
     save.runs = got.runs | 0;
     save.cracked = got.cracked | 0;
+    if (got.taught && typeof got.taught === 'object') save.taught = { ...got.taught };
     for (const u of UPGRADES) {
       save.levels[u.key] = Math.min(u.max, Math.max(0, got.levels?.[u.key] | 0));
     }

@@ -12,6 +12,7 @@ import { drawHud, drawBanner } from './hud.js';
 import { createTitle } from './title.js';
 import { createFoundry } from './foundry.js';
 import { createHelp } from './help.js';
+import { createTips } from './tips.js';
 import { load, store, statsFor, valueOf, difficultyFor } from './progress.js';
 import { createAudio } from './audio.js';
 
@@ -67,6 +68,7 @@ const save = load();
 const title = createTitle(assets, COARSE, save);
 const foundry = createFoundry(save);
 const help = createHelp();
+const tips = createTips(save);
 let helpReturn = 'title';
 let lastRun = null;
 
@@ -89,6 +91,7 @@ function reset(seed = Date.now() & 0xffff) {
   cacheOX = cacheOY = null;   // new world, cached terrain is meaningless
   fx.clear();
   floaters.clear();
+  tips.clear();
   lastMinerals.fill(0);
   cam = { x: 0, y: 0 };
   state = {
@@ -479,6 +482,8 @@ function update(dt) {
       const worth = Math.round((tier + 1) * 10 * player.stats.cargoMult * diff.payout);
       floaters.push(`+${worth}`, gx, player.py, ORE_TINT[tier], 1 + tier * 0.22);
 
+      if (tier >= 2 && tips.show('vein')) store(save);
+
       // the rare ones are worth feeling
       if (tier >= 3) {
         state.shake = Math.max(state.shake, 0.18 + tier * 0.06);
@@ -602,7 +607,19 @@ function update(dt) {
     }
   }
 
+  // Teach each mechanic the first time it bites, once per save.
+  let taught = false;
+  if (player.heat > 45) taught = tips.show('heat') || taught;
+  if (player.fuel <= 0) taught = tips.show('dry') || taught;
+  if (player.drillTarget && hazardAt.has(player.drillTarget.y * W + player.drillTarget.x)
+      && player.drillProgress > 0.7 * world.hardness(player.drillTarget.x, player.drillTarget.y)) {
+    taught = tips.show('hazard') || taught;
+  }
+  if (player.ty > CORE_TOP && guardianAlive()) taught = tips.show('guardian') || taught;
+  if (taught) store(save);
+
   const lowFuel = player.fuel > 0 && player.fuel < player.stats.maxFuel * 0.22;
+  if (lowFuel && tips.show('fuel')) store(save);
   if (lowFuel) {
     state.warnAt = (state.warnAt || 0) - dt;
     if (state.warnAt <= 0) { audio.warn(); state.warnAt = 1.4; }
@@ -651,6 +668,7 @@ function update(dt) {
   state.shake = Math.max(0, state.shake - dt * 3.4);
   fx.update(dt);
   floaters.update(dt);
+  tips.update(dt);
 
   // camera trails the drill, clamped to the world
   const targetX = player.px + TILE / 2 - CW / 2;
@@ -698,6 +716,7 @@ function render() {
   ctx.restore();
 
   drawHud(ctx, player, state, CW, audio.muted, STRATA, CORE_TOP + 7, diff);
+  tips.draw(ctx, CW, CH);
 
   if (!state.over && player.ty > CORE_TOP) {
     const socket = nearestSocket();

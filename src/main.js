@@ -89,6 +89,8 @@ function reset(seed = Date.now() & 0xffff) {
   ({ aliens, hazards, pickups, props } = populate(world, rand, diff.density));
   hazardAt = new Set(hazards.map((h) => h.y * W + h.x));
   cacheOX = cacheOY = null;   // new world, cached terrain is meaningless
+  audio.alarm(false);   // a restart mid-escape used to leave this beeping
+  audio.drill(false);
   fx.clear();
   floaters.clear();
   tips.clear();
@@ -598,6 +600,7 @@ function update(dt) {
   audio.drill(player.drilling, player.drillTarget
     ? world.hardness(player.drillTarget.x, player.drillTarget.y) : 1);
   audio.ambience(player.ty / CORE_TOP, state.escaping);
+  audio.tick(dt);
 
   updateAliens(aliens, world, player, dt, (a) => {
     if (a.hp <= 0) return;
@@ -695,7 +698,7 @@ function update(dt) {
       }
       if (dropped) {
         state.shake = Math.max(state.shake, 0.6);
-        audio.hurt();
+        audio.rumble();
       }
     }
 
@@ -731,6 +734,11 @@ function update(dt) {
   if (taught) store(save);
 
   const lowFuel = player.fuel > 0 && player.fuel < player.stats.maxFuel * 0.22;
+  if (player.heat >= 100) {
+    state.heatWarn = (state.heatWarn || 0) - dt;
+    if (state.heatWarn <= 0) { audio.redline(); state.heatWarn = 0.7; }
+  }
+
   if (lowFuel && tips.show('fuel')) store(save);
   if (lowFuel) {
     state.warnAt = (state.warnAt || 0) - dt;

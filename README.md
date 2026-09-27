@@ -32,7 +32,12 @@ connected pad hides the touch controls.
 
 **Sound** — `M`, **LB**, or the SOUND button toggles it; the choice persists.
 Two detuned low oscillators drone under everything, and the filter closes as you
-descend, so the world gets heavier underfoot; arming the charges lifts it.
+descend, so the world gets heavier underfoot; arming the charges lifts it. Every
+voice sums into a compressor, because an explosion peaks nearly five times
+higher than an ore chime and layering them clipped. Sequences schedule on the
+audio clock rather than through `setTimeout`, and the escape alarm is driven
+from the game loop -- an interval drifted and, worse, kept beeping after a
+restart because nothing cleared it.
 Everything is synthesised at runtime from oscillators and filtered noise, so
 there are no audio assets to download. Browsers will not start an AudioContext
 without a user gesture, so it wakes on the keypress or tap that starts the run.

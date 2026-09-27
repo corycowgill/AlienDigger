@@ -15,7 +15,8 @@ export function createAudio() {
   let droneGain = null;
   let droneFilter = null;
   let droneOscs = null;
-  let alarmTimer = null;
+  let alarmOn = false;
+  let alarmT = 0;
   let noiseBuf = null;
 
   let muted = false;
@@ -31,9 +32,20 @@ export function createAudio() {
       return false;
     }
 
+    // Everything sums into one bus, and an explosion peaks nearly five times
+    // higher than an ore chime, so layering the drill, the ambience, an alarm
+    // and a hit clipped. The compressor is the cheapest honest fix.
+    const squash = ctx.createDynamicsCompressor();
+    squash.threshold.value = -16;
+    squash.knee.value = 24;
+    squash.ratio.value = 6;
+    squash.attack.value = 0.004;
+    squash.release.value = 0.18;
+    squash.connect(ctx.destination);
+
     master = ctx.createGain();
-    master.gain.value = muted ? 0 : 0.5;
-    master.connect(ctx.destination);
+    master.gain.value = muted ? 0 : 0.6;
+    master.connect(squash);
 
     // One second of noise, reused for every percussive sound.
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
@@ -92,12 +104,16 @@ export function createAudio() {
     src.stop(t + dur);
   }
 
-  function tone(freq, dur, peak, type = 'square', to = null) {
+  // `when` is an offset in seconds on the audio clock. Sequences used to be
+  // chained with setTimeout, which drifts against the audio, keeps firing while
+  // the tab is backgrounded, and plays the tail of a lost run over the start of
+  // the next one if the player restarts quickly.
+  function tone(freq, dur, peak, type = 'square', to = null, when = 0) {
     if (!ensure()) return;
     const o = ctx.createOscillator();
     o.type = type;
     const g = ctx.createGain();
-    const t = ctx.currentTime;
+    const t = ctx.currentTime + when;
     o.frequency.setValueAtTime(freq, t);
     if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
     g.gain.setValueAtTime(0.0001, t);
@@ -120,7 +136,7 @@ export function createAudio() {
     toggleMute() {
       muted = !muted;
       try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch { /* ignore */ }
-      if (master) master.gain.value = muted ? 0 : 0.5;
+      if (master) master.gain.value = muted ? 0 : 0.6;
       return muted;
     },
 
@@ -152,7 +168,7 @@ export function createAudio() {
       const root = 660 * Math.pow(1.16, tier);
       tone(root, 0.1, 0.16, 'square');
       tone(root * 1.5, 0.16, 0.13, 'square');
-      if (tier >= 3) setTimeout(() => tone(root * 2, 0.22, 0.12, 'square'), 70);
+      if (tier >= 3) tone(root * 2, 0.22, 0.12, 'square', null, 0.07);
     },
     fuel() { tone(420, 0.2, 0.2, 'triangle', 900); },
     repair() { tone(300, 0.22, 0.18, 'sine', 620); },
@@ -160,19 +176,31 @@ export function createAudio() {
     plant() { tone(560, 0.1, 0.22, 'square'); tone(760, 0.16, 0.18, 'square'); },
     kill() { noise(0.26, 620, 0.34); tone(200, 0.2, 0.16, 'sawtooth', 90); },
     explode() { noise(1.1, 260, 0.75); tone(90, 0.8, 0.3, 'sawtooth', 35); },
-    win() { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.26, 0.2, 'square'), i * 130)); },
-    lose() { [392, 330, 262, 196].forEach((f, i) => setTimeout(() => tone(f, 0.3, 0.2, 'sawtooth'), i * 160)); },
+    win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.26, 0.2, 'square', null, i * 0.13)); },
+    lose() { [392, 330, 262, 196].forEach((f, i) => tone(f, 0.3, 0.2, 'sawtooth', null, i * 0.16)); },
     warn() { tone(1000, 0.08, 0.12, 'square'); },
 
     // The escape countdown gets its own pulse so the clock is audible while the
-    // player is watching the shaft rather than the HUD.
-    alarm(on) {
-      if (on && !alarmTimer) {
-        alarmTimer = setInterval(() => { tone(620, 0.09, 0.14, 'square'); }, 900);
-      } else if (!on && alarmTimer) {
-        clearInterval(alarmTimer);
-        alarmTimer = null;
+    // player is watching the shaft rather than the HUD. Driven from the game
+    // loop rather than setInterval: an interval kept beeping after a restart
+    // because nothing cleared it, and it drifted against the audio clock.
+    alarm(on) { alarmOn = on; if (!on) alarmT = 0; },
+
+    // Called once a frame with the frame's delta.
+    tick(dt) {
+      if (!alarmOn) return;
+      alarmT -= dt;
+      if (alarmT <= 0) {
+        alarmT = 0.9;
+        tone(620, 0.09, 0.15, 'square');
       }
     },
+
+    // Rubble coming down is not the player being hit, and it was borrowing the
+    // damage sound, which told them the wrong thing.
+    rumble() { noise(0.7, 180, 0.5); tone(58, 0.6, 0.22, 'sawtooth', 34); },
+
+    // Distinct from the low-fuel chirp: this one is already hurting you.
+    redline() { tone(240, 0.16, 0.2, 'sawtooth', 180); tone(360, 0.12, 0.12, 'square'); },
   };
 }

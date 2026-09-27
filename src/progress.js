@@ -67,9 +67,14 @@ export function load() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return save;
     const got = JSON.parse(raw);
-    save.credits = Math.max(0, got.credits | 0);
-    save.runs = got.runs | 0;
-    save.cracked = got.cracked | 0;
+    // Everything is clamped, not just trusted. A hand-edited or half-written
+    // save should degrade to something playable rather than feeding a negative
+    // planet count into the difficulty curve or showing "-9 planets cracked"
+    // on the title.
+    const whole = (v, hi) => Math.max(0, Math.min(hi, v | 0));
+    save.credits = whole(got.credits, 9e6);
+    save.runs = whole(got.runs, 9e5);
+    save.cracked = whole(got.cracked, 9e5);
     if (got.taught && typeof got.taught === 'object') save.taught = { ...got.taught };
     for (const u of UPGRADES) {
       save.levels[u.key] = Math.min(u.max, Math.max(0, got.levels?.[u.key] | 0));

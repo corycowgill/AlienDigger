@@ -4,6 +4,13 @@ const RATE = 14;   // frames per second
 
 export function createFx(assets) {
   const live = [];
+
+  // Rows come from the fx sheet, plus the minerals sheet's sparkle, which was
+  // authored as a twinkle for exactly this and lives on the wrong sheet to be
+  // found by name. spawn() returns silently on an unknown row, so every
+  // fx.spawn('sparkle') in the game had been a no-op without ever erroring.
+  const rows = Object.assign(Object.create(null), assets.anim.fx,
+                             { sparkle: assets.anim.minerals.sparkle });
   const pops = [];
 
   return {
@@ -15,7 +22,7 @@ export function createFx(assets) {
     },
 
     spawn(row, x, y, scale = 1) {
-      const frames = assets.anim.fx[row];
+      const frames = rows[row];
       if (!frames) return;
       live.push({ frames, x, y, t: 0, scale });
     },

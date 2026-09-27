@@ -112,7 +112,14 @@ export function createAudio() {
     },
 
     breakTile(hardness = 1) { noise(0.16, 900 - hardness * 180, 0.36); },
-    ore() { tone(880, 0.1, 0.16, 'square'); tone(1320, 0.14, 0.12, 'square'); },
+    // Pitch climbs with the tier, and the top two get a third note, so a pulse
+    // crystal sounds like a find and copper sounds like copper.
+    ore(tier = 0) {
+      const root = 660 * Math.pow(1.16, tier);
+      tone(root, 0.1, 0.16, 'square');
+      tone(root * 1.5, 0.16, 0.13, 'square');
+      if (tier >= 3) setTimeout(() => tone(root * 2, 0.22, 0.12, 'square'), 70);
+    },
     fuel() { tone(420, 0.2, 0.2, 'triangle', 900); },
     repair() { tone(300, 0.22, 0.18, 'sine', 620); },
     hurt() { noise(0.22, 420, 0.5); tone(150, 0.16, 0.2, 'sawtooth', 70); },

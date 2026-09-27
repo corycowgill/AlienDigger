@@ -129,7 +129,7 @@ export function populate(world, rand, density = 1) {
         if (pool.length) {
           const kind = pool[Math.floor(rand() * pool.length)];
           aliens.push({
-            kind, x, y, hp: kind.hp, t: rand() * 4,
+            kind, x, y, hp: kind.hp, maxHp: kind.hp, t: rand() * 4,
             dx: rand() < 0.5 ? -1 : 1, px: x * TILE, py: y * TILE,
           });
         }
@@ -191,7 +191,7 @@ export function populate(world, rand, density = 1) {
   const deep = HAZARD_KINDS.find((k) => k.row === 'lavavent');
   world.chargeSockets.forEach((sock, i) => {
     aliens.push({
-      kind: guard, x: sock.x, y: sock.y - 4, hp: guard.hp, t: i,
+      kind: guard, x: sock.x, y: sock.y - 4, hp: guard.hp, maxHp: guard.hp, t: i,
       dx: i % 2 ? 1 : -1, px: sock.x * TILE, py: (sock.y - 4) * TILE,
     });
     if (i < 2) {

@@ -17,7 +17,9 @@ detonation. The blast shatters the planet and you harvest the precious minerals.
 > **Status.** This is the design, not a description of the build. The Foundry
 > and all six upgrades are in, and minerals now buy them, so ore density is
 > live tuning, the Spitter spits, the drill cuts on all eight headings, and heat
-> is in, and all five pickup frames are now live.
+> is in, all five pickup frames are live, and the refined-gem row now pops on
+> collection. Every art row the generator produced is used except the HUD and
+> UI kit sheets, whose job the hand-drawn HUD primitives do instead.
 
 ## Systems
 - **Digger**: 8-directional drill; drilling speed varies per material. Hull HP,

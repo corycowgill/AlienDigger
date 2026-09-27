@@ -126,6 +126,14 @@ The repo is a static site with nothing to build, so any static host works. On
 
 `index.html` sits at the repo root, so the game loads at the site root.
 
+## Feedback
+
+Anything that changes your state says so where you are looking, which is the
+shaft rather than the HUD: the refined gem pops out of the rock and its value
+floats off it, sized and pitched by tier; damage floats a number in the colour
+of whatever dealt it; any alien you have hurt carries a small health bar, and
+the Guardian a full one naming what it is doing.
+
 ## Look
 
 The drill carries its own light and the dark closes in with depth. Tile variants

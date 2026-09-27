@@ -7,6 +7,7 @@ import { TILE, W, D, CORE_TOP, EMPTY, STRATA, World, rng } from './world.js';
 import { createPlayer, updatePlayer, damage } from './player.js';
 import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup } from './entities.js';
 import { createFx } from './fx.js';
+import { createFloaters } from './floaters.js';
 import { drawHud, drawBanner } from './hud.js';
 import { createTitle } from './title.js';
 import { createFoundry } from './foundry.js';
@@ -57,6 +58,9 @@ boot.remove();
 
 const input = createInput();
 const fx = createFx(assets);
+const floaters = createFloaters();
+const ORE_TINT = ['#e07a2b', '#d8dbe6', '#a77ff0', '#e8b02b', '#39d7e8'];
+const lastMinerals = [0, 0, 0, 0, 0];
 const audio = createAudio();
 
 const save = load();
@@ -84,6 +88,8 @@ function reset(seed = Date.now() & 0xffff) {
   hazardAt = new Set(hazards.map((h) => h.y * W + h.x));
   cacheOX = cacheOY = null;   // new world, cached terrain is meaningless
   fx.clear();
+  floaters.clear();
+  lastMinerals.fill(0);
   cam = { x: 0, y: 0 };
   state = {
     time: 0, escaping: false, escapeLeft: diff.escape, shake: 0, tremor: 3,
@@ -307,6 +313,17 @@ function drawEntities() {
       ctx.restore();
     }
 
+    // Any alien you have hurt shows a small bar, so ramming a thing reads as
+    // progress rather than a gamble. The boss gets the full treatment below.
+    if (!a.boss && a.hp > 0 && a.maxHp && a.hp < a.maxHp) {
+      const w = 26, bx = Math.round(a.px + TILE / 2 - cam.x - w / 2);
+      const by = Math.round(a.py - cam.y - 6);
+      ctx.fillStyle = 'rgba(8,5,16,0.8)';
+      ctx.fillRect(bx - 1, by - 1, w + 2, 5);
+      ctx.fillStyle = '#ff7b3a';
+      ctx.fillRect(bx, by, Math.round(w * Math.max(0, a.hp / a.maxHp)), 3);
+    }
+
     // Boss health, floating above it, so progress is legible from the cockpit.
     if (a.boss && a.hp > 0) {
       const w = 104, bx = Math.round(a.px + TILE / 2 - cam.x - w / 2);
@@ -435,7 +452,34 @@ function update(dt) {
   if (input.tapped('restart')) { reset(); return; }
 
   state.time += dt;
+  const oreBefore = player.minerals.reduce((a, c) => a + c, 0);
   updatePlayer(player, world, input, dt, playerFx);
+  if (player.minerals.reduce((a, c) => a + c, 0) > oreBefore) {
+    // Freeing ore is the moment the run pays you, and it used to be one small
+    // sparkle. Now the refined gem pops out of the rock, the value floats off
+    // it, and both the size and the chime climb with the tier -- so a pulse
+    // crystal reads as a find and copper reads as copper.
+    for (let tier = 0; tier < player.minerals.length; tier++) {
+      if (player.minerals[tier] === lastMinerals[tier]) continue;
+
+      const gx = player.px + TILE / 2, gy = player.py + TILE / 2;
+      const gem = assets.anim.minerals.gem?.[tier];
+      fx.pop(gem, gx, gy, 0.55 + tier * 0.09, 22 + tier * 7);
+      fx.spawn('sparkle', gx, gy, 0.8 + tier * 0.25);
+
+      const worth = Math.round((tier + 1) * 10 * player.stats.cargoMult * diff.payout);
+      floaters.push(`+${worth}`, gx, player.py, ORE_TINT[tier], 1 + tier * 0.22);
+
+      // the rare ones are worth feeling
+      if (tier >= 3) {
+        state.shake = Math.max(state.shake, 0.18 + tier * 0.06);
+        fx.spawn('flash', gx, gy, 0.7);
+      }
+      audio.ore(tier);
+      break;
+    }
+  }
+  for (let i = 0; i < player.minerals.length; i++) lastMinerals[i] = player.minerals[i];
   audio.drill(player.drilling, player.drillTarget
     ? world.hardness(player.drillTarget.x, player.drillTarget.y) : 1);
 
@@ -443,11 +487,13 @@ function update(dt) {
     if (a.hp <= 0) return;
     if (damage(player, a.kind.dmg, fx)) {
       fx.spawn('sparks', player.px + 16, player.py + 16);
+      floaters.push(`-${a.kind.dmg}`, player.px + 16, player.py, '#ff6b5b');
       audio.hurt();
       state.shake = Math.max(state.shake, 0.5);
     }
   }, (a) => {
     if (damage(player, a.kind.spitDmg, fx)) {
+      floaters.push(`-${a.kind.spitDmg}`, player.px + 16, player.py, '#7fe04a');
       // draw the acid leaving and arriving, not just the damage landing
       fx.spawn('acidsplash', a.px + 16, a.py + 16, 0.6);
       fx.spawn('acidsplash', player.px + 16, player.py + 16);
@@ -461,6 +507,7 @@ function update(dt) {
     audio.explode();
     if (reach && damage(player, a.kind.slam, fx)) {
       fx.spawn('flash', player.px + 16, player.py + 16);
+      floaters.push(`-${a.kind.slam}`, player.px + 16, player.py, '#ff6b5b');
     }
   });
   ramAliens(aliens, player, dt, (a) => {
@@ -473,13 +520,23 @@ function update(dt) {
 
   updateHazards(hazards, player, dt, (h) => {
     const r = applyHazard(h, player, world, fx);
-    if (typeof r === 'number') { audio.hurt(); state.shake = Math.max(state.shake, 0.55); }
-    else if (r === 'fuel') audio.warn();
+    if (typeof r === 'number') {
+      floaters.push(`-${r}`, player.px + 16, player.py, '#ff6b5b');
+      audio.hurt();
+      state.shake = Math.max(state.shake, 0.55);
+    } else if (r === 'fuel') {
+      floaters.push('FUEL -11', player.px + 16, player.py, '#e8b02b');
+      audio.warn();
+    }
   });
 
   updatePickups(pickups, player, (u) => {
     const kind = applyPickup(u, player);
     fx.spawn(kind === 'coolant' ? 'shieldhit' : 'sparkle', player.px + 16, player.py + 16);
+    const said = { fuel: [`+${u.kind.amount} FUEL`, '#e8b02b'], repair: [`+${u.kind.amount} HULL`, '#4ae06b'],
+                   coolant: ['HEAT PURGED', '#39d7e8'], shield: ['SHIELD UP', '#39d7e8'],
+                   boost: ['OVERDRIVE', '#e8b02b'] }[kind];
+    if (said) floaters.push(said[0], player.px + 16, player.py, said[1]);
     if (kind === 'fuel') audio.fuel();
     else if (kind === 'repair') audio.repair();
     else audio.ore();
@@ -583,6 +640,7 @@ function update(dt) {
 
   state.shake = Math.max(0, state.shake - dt * 3.4);
   fx.update(dt);
+  floaters.update(dt);
 
   // camera trails the drill, clamped to the world
   const targetX = player.px + TILE / 2 - CW / 2;
@@ -626,6 +684,7 @@ function render() {
   drawPlayer();
   fx.draw(ctx, cam);
   drawLight();
+  floaters.draw(ctx, cam);
   ctx.restore();
 
   drawHud(ctx, player, state, CW, audio.muted, STRATA, CORE_TOP + 7, diff);

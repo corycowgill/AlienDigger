@@ -9,8 +9,9 @@
 // Usage:  node tools/sim.mjs [runs]
 
 import { TILE, W, D, CORE_TOP, EMPTY, World, strataAt, rng } from '../src/world.js';
-import { createPlayer, updatePlayer, damage, MAX_HULL, MAX_FUEL } from '../src/player.js';
+import { createPlayer, updatePlayer, damage } from '../src/player.js';
 import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard } from '../src/entities.js';
+import { statsFor } from '../src/progress.js';
 
 const DT = 1 / 60;
 const MAX_SECONDS = 1200;
@@ -44,9 +45,9 @@ function nearestPickup(pickups, p, radius, want) {
   return best;
 }
 
-function run(seed, policy) {
+function run(seed, policy, levels = {}) {
   const world = new World(seed);
-  const player = createPlayer();
+  const player = createPlayer(levels);
   const { aliens, hazards, pickups } = populate(world, rng(seed ^ 0x9e37));
   const input = scriptedInput();
   const shaftX = player.tx;     // the column the descent was dug down
@@ -92,8 +93,8 @@ function run(seed, policy) {
         });
         ramAliens(aliens, player, DT, () => {});
         updatePickups(pickups, player, (u) => {
-          if (u.kind.kind === 'fuel') player.fuel = Math.min(MAX_FUEL, player.fuel + u.kind.amount);
-          else player.hull = Math.min(MAX_HULL, player.hull + u.kind.amount);
+          if (u.kind.kind === 'fuel') player.fuel = Math.min(player.stats.maxFuel, player.fuel + u.kind.amount);
+          else player.hull = Math.min(player.stats.maxHull, player.hull + u.kind.amount);
         });
         if (player.dead) break;
         t += DT;
@@ -138,8 +139,8 @@ function run(seed, policy) {
       else if (r === null) blockedHits++;
     });
     updatePickups(pickups, player, (u) => {
-      if (u.kind.kind === 'fuel') player.fuel = Math.min(MAX_FUEL, player.fuel + u.kind.amount);
-      else player.hull = Math.min(MAX_HULL, player.hull + u.kind.amount);
+      if (u.kind.kind === 'fuel') player.fuel = Math.min(player.stats.maxFuel, player.fuel + u.kind.amount);
+      else player.hull = Math.min(player.stats.maxHull, player.hull + u.kind.amount);
     });
 
     if (player.fuel <= 0) { dryTime += DT; if (player.invuln > 0) dryInvulnTime += DT; }
@@ -174,7 +175,8 @@ function run(seed, policy) {
 
 // ---- strata arithmetic, independent of any run
 function drillBudget() {
-  const FUEL_DRILL = 2.6, DRILL_RATE = 2.2;
+  const FUEL_DRILL = 2.6;
+  const { drillRate: DRILL_RATE, maxFuel: MAX_FUEL } = statsFor({});
   let total = 0, prev = 0;
   const rows = [];
   for (const s of strataAt ? [] : []) void s;
@@ -194,17 +196,21 @@ function drillBudget() {
 }
 
 const runs = Number(process.argv[2] || 40);
+// node tools/sim.mjs 60 drill=2,hull=1  -> simulate a part-upgraded drill
+const levels = Object.fromEntries((process.argv[3] || '').split(',').filter(Boolean)
+  .map((kv) => { const [k, v] = kv.split('='); return [k, Number(v) || 0]; }));
+if (Object.keys(levels).length) console.log('upgrades:', JSON.stringify(levels));
 
 console.log('=== fuel cost of drilling every tile of a 200-tile column ===');
 const b = drillBudget();
 for (const r of b.rows) {
   console.log(`  ${r.name.padEnd(10)} ${String(r.tiles).padStart(3)} tiles  h=${r.hard}  ${String(r.secs).padStart(6)}s  ${String(r.fuel).padStart(6)} fuel`);
 }
-console.log(`  TOTAL ${b.total} fuel vs a ${MAX_FUEL}-unit tank = ${(b.total / MAX_FUEL).toFixed(1)} tanks\n`);
+console.log(`  TOTAL ${b.total} fuel vs a ${statsFor({}).maxFuel}-unit tank = ${(b.total / statsFor({}).maxFuel).toFixed(1)} tanks\n`);
 
 for (const policy of ['beeline', 'greedy']) {
   const results = [];
-  for (let i = 0; i < runs; i++) results.push(run(1000 + i, policy));
+  for (let i = 0; i < runs; i++) results.push(run(1000 + i, policy, levels));
   const won = results.filter((r) => r.escaped).length;
   const cored = results.filter((r) => r.reachedCore).length;
   const died = results.filter((r) => r.dead).length;

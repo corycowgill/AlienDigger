@@ -14,9 +14,11 @@
 
 import { W, CORE_TOP, EMPTY, World, strataAt, rng } from '../src/world.js';
 import { populate } from '../src/entities.js';
-import { MAX_FUEL } from '../src/player.js';
+import { statsFor } from '../src/progress.js';
 
-const FUEL_DRILL = 2.6, DRILL_RATE = 2.2;
+const { maxFuel: MAX_FUEL, drillRate: DRILL_RATE } = statsFor({});
+
+const FUEL_DRILL = 2.6;
 const SEEDS = Number(process.argv[2] || 100);
 const CORRIDOR = Number(process.argv[3] || 6);
 

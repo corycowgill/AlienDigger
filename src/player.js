@@ -2,12 +2,11 @@
 // open neighbour or grinds through a solid one. Fuel pays for both.
 
 import { TILE, W, D, EMPTY } from './world.js';
+import { statsFor } from './progress.js';
 
-export const MAX_HULL = 100;
-export const MAX_FUEL = 100;
-
-const MOVE_TIME = 0.14;     // seconds to cross an open tile
-const DRILL_RATE = 2.2;     // hardness units per second
+// Move time, drill rate, tank and hull now come from the player's upgrade
+// levels (see progress.js). Level 0 reproduces the tuned base game, so anything
+// reading p.stats gets the same numbers a fresh save always had.
 const FUEL_DRILL = 2.6;     // per second while drilling
 const FUEL_MOVE = 1.1;      // per second while moving
 const FUEL_IDLE = 0.15;
@@ -23,13 +22,15 @@ const FUEL_STARVE_DPS = 6;  // an empty tank kills a full hull in ~17s
 // because it never runs dry in the first place.
 const DRY_DRILL_SCALE = 0.35;
 
-export function createPlayer() {
+export function createPlayer(levels) {
+  const stats = statsFor(levels);
   return {
+    stats,
     tx: Math.floor(W / 2), ty: 3,
     px: Math.floor(W / 2) * TILE, py: 3 * TILE,
     facing: 'down',
-    hull: MAX_HULL,
-    fuel: MAX_FUEL,
+    hull: stats.maxHull,
+    fuel: stats.maxFuel,
     minerals: [0, 0, 0, 0, 0],
     charges: 3,
     planted: 0,
@@ -53,7 +54,7 @@ export function updatePlayer(p, world, input, dt, fx) {
 
   // finish an in-progress move before accepting new input
   if (p.moving) {
-    p.moving.t += dt / MOVE_TIME;
+    p.moving.t += dt / p.stats.moveTime;
     const t = Math.min(1, p.moving.t);
     p.px = p.moving.fromX * TILE + (p.moving.toX - p.moving.fromX) * TILE * t;
     p.py = p.moving.fromY * TILE + (p.moving.toY - p.moving.fromY) * TILE * t;
@@ -89,11 +90,11 @@ export function updatePlayer(p, world, input, dt, fx) {
       p.drillProgress = 0;
     }
     p.drilling = true;
-    p.drillProgress += DRILL_RATE * (p.fuel <= 0 ? DRY_DRILL_SCALE : 1) * dt;
+    p.drillProgress += p.stats.drillRate * (p.fuel <= 0 ? DRY_DRILL_SCALE : 1) * dt;
     p.fuel -= FUEL_DRILL * dt;
     p.frame += dt * 22;
 
-    if (p.drillProgress % 0.35 < dt * DRILL_RATE) {
+    if (p.drillProgress % 0.35 < dt * p.stats.drillRate) {
       fx.spawn('debris', nx * TILE + TILE / 2, ny * TILE + TILE / 2);
     }
 
@@ -133,11 +134,13 @@ export function updatePlayer(p, world, input, dt, fx) {
 // path to the player and the core chamber had a guard detail, a run took 11
 // contacts instead of 0.5, and at 0.6s that was 122 hull against a 100 tank.
 // Measured over 40 runs: competent play wins 23/40 here, 14/40 at 0.6s and
-// 31/40 at 1.2s, against 6/40 for a careless straight dig.
+// 31/40 at 1.2s, against 6/40 for a careless straight dig. Settled at 0.75s
+// once the Foundry landed: a fresh save wins about two runs in three, and
+// upgrades buy the rest of the margin back rather than starting with it.
 export function damage(p, amount, fx) {
   if (p.invuln > 0 || p.dead) return false;
   p.hull -= amount;
-  p.invuln = 0.9;
+  p.invuln = 0.75;
   if (fx) fx.spawn('shieldhit', p.px + TILE / 2, p.py + TILE / 2);
   if (p.hull <= 0) { p.hull = 0; p.dead = true; }
   return true;

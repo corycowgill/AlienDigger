@@ -22,6 +22,18 @@ python -m http.server 8765
 
 Add `?dev` to the URL for `dev.warp(depth)` and `dev.refuel()` in the console.
 
+## Progression
+
+Minerals are banked as credits when a run ends -- the full haul if the planet
+cracked, a 40% salvage if the drill did -- and spent at **the Foundry** between
+runs on six upgrades: drill bit, fuel tank, hull plating, scanner, thrusters and
+cargo bay. Credits and levels persist in `localStorage`.
+
+The base game is tuned so a fresh save is hard: simulated, competent play clears
+about two runs in three and a careless straight dig about one in twelve. Upgrades
+buy the margin back rather than starting with it -- a part-kitted drill clears
+~93%, and by then even careless play gets through more often than not.
+
 ## How it plays
 
 Fuel is the real clock. Drilling burns it fast, travelling through open tunnel
@@ -41,7 +53,7 @@ makes the Core Guardian something to dodge rather than fight.
 index.html                 the page
 intro/                     Hallucinated Games studio ident (vendored)
 src/                       game modules (assets, input, world, player,
-                           entities, fx, hud, title, main)
+                           entities, fx, hud, title, foundry, progress, main)
 art/<category>/            raw generated sheets, as downloaded
 art/game/                  the shipping bundle: cut, normalized, downsampled
 art/atlas.json             every sliced frame's rect in its source sheet
@@ -74,6 +86,20 @@ The repo is a static site with nothing to build, so any static host works. On
 | Publish Directory | `.` |
 
 `index.html` sits at the repo root, so the game loads at the site root.
+
+## Balance tooling
+
+```bash
+node tools/sim.mjs 60                  # whole descents, headless, two policies
+node tools/sim.mjs 60 drill=2,hull=2   # ... at a given upgrade level
+node tools/supply.mjs 200              # is the deep game still supplyable?
+node tools/census.mjs 20               # what a generated world actually contains
+```
+
+`sim.mjs` drives the real modules in Node and splits deaths into "died with fuel
+left" versus "ran dry", because a win rate alone averages that distinction away
+-- a run lost to chip damage it could not avoid reads identically to one lost to
+bad routing, and only the second is a game working.
 
 ## Studio ident
 

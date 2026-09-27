@@ -4,11 +4,13 @@
 import { loadAssets } from './assets.js';
 import { createInput } from './input.js';
 import { TILE, W, D, CORE_TOP, EMPTY, World, rng } from './world.js';
-import { createPlayer, updatePlayer, damage, MAX_HULL, MAX_FUEL } from './player.js';
+import { createPlayer, updatePlayer, damage } from './player.js';
 import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard } from './entities.js';
 import { createFx } from './fx.js';
 import { drawHud, drawBanner } from './hud.js';
 import { createTitle } from './title.js';
+import { createFoundry } from './foundry.js';
+import { load, store, statsFor, valueOf } from './progress.js';
 
 const canvas = document.getElementById('screen');
 const ctx = canvas.getContext('2d');
@@ -52,6 +54,10 @@ const input = createInput();
 const fx = createFx(assets);
 const title = createTitle(assets, COARSE);
 
+const save = load();
+const foundry = createFoundry(save);
+let lastRun = null;
+
 // 'title' until the viewer starts, then 'playing'. ?dev skips straight in so
 // the test hooks do not have to clear the screen first.
 let screen = new URLSearchParams(location.search).has('dev') ? 'playing' : 'title';
@@ -61,7 +67,7 @@ let world, player, aliens, hazards, pickups, state, cam, hazardAt;
 function reset(seed = Date.now() & 0xffff) {
   world = new World(seed);
   const rand = rng(seed ^ 0x9e37);
-  player = createPlayer();
+  player = createPlayer(save.levels);
   ({ aliens, hazards, pickups } = populate(world, rand));
   hazardAt = new Set(hazards.map((h) => h.y * W + h.x));
   fx.clear();
@@ -69,7 +75,7 @@ function reset(seed = Date.now() & 0xffff) {
   state = {
     time: 0, escaping: false, escapeLeft: 60,
     over: null,           // 'dead' | 'won' | 'boom'
-    banked: 0,
+    banked: 0,           // set once when the run ends
   };
 }
 reset();
@@ -181,7 +187,7 @@ function drawPlayer() {
   if (p.invuln > 0 && Math.floor(state.time * 20) % 2) return;
 
   let row = 'right';
-  if (p.hull < MAX_HULL * 0.35) row = 'damage';
+  if (p.hull < p.stats.maxHull * 0.35) row = 'damage';
   else if (p.facing === 'down') row = 'down';
   else if (p.facing === 'up') row = 'thruster';
 
@@ -225,8 +231,20 @@ function update(dt) {
     return;
   }
 
+  if (screen === 'foundry') {
+    if (foundry.update(dt, input)) {
+      screen = 'playing';
+      reset();
+    }
+    return;
+  }
+
+  // Once a run is over the only way on is through the Foundry.
+  if (state.over) {
+    if (input.tapped('restart') || input.tapped('plant')) screen = 'foundry';
+    return;
+  }
   if (input.tapped('restart')) { reset(); return; }
-  if (state.over) return;
 
   state.time += dt;
   updatePlayer(player, world, input, dt, fx);
@@ -245,9 +263,9 @@ function update(dt) {
 
   updatePickups(pickups, player, (u) => {
     if (u.kind.kind === 'fuel') {
-      player.fuel = Math.min(MAX_FUEL, player.fuel + u.kind.amount);
+      player.fuel = Math.min(player.stats.maxFuel, player.fuel + u.kind.amount);
     } else {
-      player.hull = Math.min(MAX_HULL, player.hull + u.kind.amount);
+      player.hull = Math.min(player.stats.maxHull, player.hull + u.kind.amount);
     }
     fx.spawn('sparkle', player.px + 16, player.py + 16);
   });
@@ -268,7 +286,6 @@ function update(dt) {
     state.escapeLeft -= dt;
     if (player.ty <= 3) {
       state.over = 'won';
-      state.banked = player.minerals.reduce((a, c, i) => a + c * (i + 1) * 10, 0);
     } else if (state.escapeLeft <= 0) {
       state.over = 'boom';
       fx.spawn('explosion', player.px + 16, player.py + 16, 3);
@@ -283,6 +300,24 @@ function update(dt) {
   }
 
   if (player.dead) state.over = 'dead';
+
+  // Bank once, however the run ended. A lost run still pays out what was dug,
+  // at a cut, so a bad descent still moves the Foundry forward instead of being
+  // wasted time.
+  if (state.over && !state.banked) {
+    const full = valueOf(player.minerals, player.stats.cargoMult);
+    state.banked = state.over === 'won' ? full : Math.round(full * 0.4);
+    save.credits += state.banked;
+    save.runs++;
+    if (state.over === 'won') save.cracked++;
+    store(save);
+    lastRun = {
+      cracked: state.over === 'won',
+      line: state.over === 'won'
+        ? `planet cracked -- full haul banked, ${state.banked} CR`
+        : `run lost at ${player.ty}m -- salvage only, ${state.banked} CR`,
+    };
+  }
 
   fx.update(dt);
 
@@ -301,6 +336,10 @@ function render() {
 
   if (screen === 'title') {
     title.draw(ctx, CW, CH, VIEW_TOP);
+    return;
+  }
+  if (screen === 'foundry') {
+    foundry.draw(ctx, CW, CH, assets, lastRun);
     return;
   }
 
@@ -331,13 +370,12 @@ function render() {
     }
   }
 
-  if (state.over === 'won') {
-    drawBanner(ctx, CW, CH, 'PLANET CRACKED',
-               state.banked + ' credits banked  -  press R to launch again');
-  } else if (state.over === 'dead') {
-    drawBanner(ctx, CW, CH, 'DRILL DESTROYED', 'press R to launch again');
-  } else if (state.over === 'boom') {
-    drawBanner(ctx, CW, CH, 'TOO SLOW', 'you were still inside  -  press R');
+  if (state.over) {
+    const title = state.over === 'won' ? 'PLANET CRACKED'
+                : state.over === 'dead' ? 'DRILL DESTROYED' : 'TOO SLOW';
+    const why = state.over === 'boom' ? 'you were still inside  -  ' : '';
+    drawBanner(ctx, CW, CH, title,
+               `${why}${state.banked} CR banked  -  press R for the Foundry`);
   }
 }
 
@@ -359,7 +397,7 @@ if (new URLSearchParams(location.search).has('dev')) {
       player.moving = null;
       cam.y = player.py - CH / 2;
     },
-    refuel() { player.fuel = MAX_FUEL; player.hull = MAX_HULL; },
+    refuel() { player.fuel = player.stats.maxFuel; player.hull = player.stats.maxHull; },
     // Step the game by hand. requestAnimationFrame is throttled to zero in a
     // background tab, so without this a harness cannot drive a run unless the
     // window happens to be foregrounded.

@@ -9,6 +9,7 @@ const MAP = {
   ArrowUp: 'up', KeyW: 'up',
   ArrowDown: 'down', KeyS: 'down',
   KeyE: 'plant', KeyR: 'restart', Space: 'plant', KeyM: 'mute',
+  KeyH: 'help', Slash: 'help',
 };
 
 // Order matters only when two directions are held at once.
@@ -21,6 +22,7 @@ const DIRS = ['left', 'right', 'up', 'down'];
 const PAD_BUTTONS = {
   0: 'plant',      // A
   3: 'restart',    // Y
+  2: 'help',       // X
   4: 'mute',       // LB
   9: 'restart',    // Start / Menu
   12: 'up',

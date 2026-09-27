@@ -79,8 +79,12 @@ export function createTitle(assets, coarse, save) {
         ctx.fillText(`${save.credits} CR banked`, cw / 2, ch * 0.905 + 14);
       }
 
-      ctx.fillStyle = '#5b556b';
+      ctx.fillStyle = '#6f6883';
       ctx.font = '11px ui-monospace, monospace';
+      ctx.fillText(pad ? '(X) how to play' : coarse ? 'HELP  how to play' : 'H  how to play',
+                   cw / 2, ch - 38);
+
+      ctx.fillStyle = '#5b556b';
       ctx.fillText('HALLUCINATED GAMES', cw / 2, ch - 22);
       ctx.textAlign = 'left';
     },

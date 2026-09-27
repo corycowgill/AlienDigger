@@ -67,8 +67,8 @@ makes the Core Guardian something to dodge rather than fight.
 ```
 index.html                 the page
 intro/                     Hallucinated Games studio ident (vendored)
-src/                       game modules (assets, input, world, player,
-                           entities, fx, hud, title, foundry, progress, main)
+src/                       game modules (assets, input, world, player, entities,
+                           fx, hud, audio, title, help, foundry, progress, main)
 art/<category>/            raw generated sheets, as downloaded
 art/game/                  the shipping bundle: cut, normalized, downsampled
 art/atlas.json             every sliced frame's rect in its source sheet

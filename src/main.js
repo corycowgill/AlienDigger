@@ -10,6 +10,7 @@ import { createFx } from './fx.js';
 import { drawHud, drawBanner } from './hud.js';
 import { createTitle } from './title.js';
 import { createFoundry } from './foundry.js';
+import { createHelp } from './help.js';
 import { load, store, statsFor, valueOf } from './progress.js';
 import { createAudio } from './audio.js';
 
@@ -61,6 +62,8 @@ const audio = createAudio();
 const save = load();
 const title = createTitle(assets, COARSE, save);
 const foundry = createFoundry(save);
+const help = createHelp();
+let helpReturn = 'title';
 let lastRun = null;
 
 // 'title' until the viewer starts, then 'playing'. ?dev skips straight in so
@@ -264,8 +267,14 @@ function update(dt) {
 
   if (input.tapped('mute')) audio.toggleMute();
 
+  if (screen === 'help') {
+    if (help.update(dt, input)) screen = helpReturn;
+    return;
+  }
+
   if (screen === 'title') {
     title.update(dt);
+    if (input.tapped('help')) { helpReturn = 'title'; screen = 'help'; audio.resume(); return; }
     if (title.wantsStart(input)) {
       audio.resume();
       screen = 'playing';
@@ -275,10 +284,18 @@ function update(dt) {
   }
 
   if (screen === 'foundry') {
+    if (input.tapped('help')) { helpReturn = 'foundry'; screen = 'help'; return; }
     if (foundry.update(dt, input)) {
       screen = 'playing';
       reset();
     }
+    return;
+  }
+
+  if (input.tapped('help')) {
+    helpReturn = 'playing';
+    screen = 'help';
+    audio.drill(false);
     return;
   }
 
@@ -428,6 +445,10 @@ function render() {
   }
   if (screen === 'foundry') {
     foundry.draw(ctx, CW, CH, assets, lastRun, input.hasGamepad());
+    return;
+  }
+  if (screen === 'help') {
+    help.draw(ctx, CW, CH, assets, COARSE, input.hasGamepad());
     return;
   }
 

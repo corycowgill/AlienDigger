@@ -171,8 +171,8 @@ export function createFoundry(save) {
       }
       ctx.fillStyle = '#5b556b';
       ctx.font = '10px ui-monospace, monospace';
-      ctx.fillText(pad ? 'd-pad select    (A) install    (Y) launch'
-                       : 'up / down select    [E] install    [R] launch', cw / 2, ch - 12);
+      ctx.fillText(pad ? 'd-pad select    (A) install    (Y) launch    (X) help'
+                       : 'up / down select    [E] install    [R] launch    [H] help', cw / 2, ch - 12);
       ctx.textAlign = 'left';
     },
   };

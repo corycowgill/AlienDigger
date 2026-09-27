@@ -26,9 +26,12 @@ detonation. The blast shatters the planet and you harvest the precious minerals.
   crystal layer, magma layer, core shell, **CORE CHAMBER**.
 - **Hazards**: lava vents, pressurized gas pockets, acid pools, cave-ins/falling boulders,
   crusher rocks, electric mineral veins, void pits.
-- **Aliens**: Grubworm (burrower), Rock Crab (armored, blocks tunnels), Spitter (ranged acid
-  down a clear tunnel; closes to melee without a line),
-  Swarmlet (fast, packs), Tunnel Lurker (ambush), Core Guardian (boss).
+- **Aliens**, each with its own behaviour rather than a shared chase:
+  Grubworm (burrows through soft strata, so it arrives through a shaft wall),
+  Rock Crab (armored — shrugs off half of ramming), Spitter (ranged acid down a
+  clear tunnel; closes to melee without a line),
+  Swarmlet (fast and erratic), Tunnel Lurker (dormant until you are close,
+  then bolts), Core Guardian (boss, gates the charges).
 - **Minerals**: Copper, Iridium, Voidstone, Alien Amber, Pulse Crystal (rarity ascending).
 - **Upgrades**: drill bit tier, hull plating, fuel tank, cargo bay, scanner, thrusters.
 

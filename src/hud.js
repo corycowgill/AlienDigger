@@ -7,6 +7,44 @@ const TRIM = '#2fd2e8';
 
 const ORE_COLORS = ['#e07a2b', '#d8dbe6', '#7a4fd6', '#e8b02b', '#39d7e8'];
 
+// One swatch per stratum, shallowest first, so the descent bar reads as the
+// ground it is cutting through rather than an abstract percentage.
+const STRATA_COLORS = [
+  '#6b4a2f', '#8a5a33', '#c19a5b', '#7b7d84',
+  '#8fc6de', '#2f7d6b', '#7a4fd6', '#d2521f',
+];
+
+// A vertical slice of the planet with the drill's position on it. Depth in
+// metres alone says how far you have come and nothing about how far is left,
+// which is the number that actually governs whether to turn back.
+function descentBar(ctx, x, y, w, h, depth, maxDepth, strata) {
+  ctx.fillStyle = '#0c0a12';
+  ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+
+  let prev = 0;
+  strata.forEach((band, i) => {
+    const y0 = y + h * (prev / maxDepth);
+    const y1 = y + h * (Math.min(band.depth, maxDepth) / maxDepth);
+    ctx.fillStyle = STRATA_COLORS[i] || '#555';
+    ctx.fillRect(x, y0, w, Math.max(1, y1 - y0));
+    prev = band.depth;
+  });
+
+  // the core chamber sits at the bottom
+  ctx.fillStyle = '#ff7b2b';
+  ctx.fillRect(x, y + h - 3, w, 3);
+
+  const at = y + h * Math.min(1, depth / maxDepth);
+  ctx.fillStyle = '#0d0a14';
+  ctx.fillRect(x - 3, Math.round(at) - 2, w + 6, 4);
+  ctx.fillStyle = TRIM;
+  ctx.fillRect(x - 3, Math.round(at) - 1, w + 6, 2);
+
+  ctx.strokeStyle = '#2b2438';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x - 1.5, y - 1.5, w + 3, h + 3);
+}
+
 function bar(ctx, x, y, w, h, frac, fill, label) {
   ctx.fillStyle = PANEL; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
   ctx.fillStyle = '#0c0a12'; ctx.fillRect(x, y, w, h);
@@ -18,7 +56,7 @@ function bar(ctx, x, y, w, h, frac, fill, label) {
   ctx.fillText(label, x, y - 6);
 }
 
-export function drawHud(ctx, p, state, cw, muted) {
+export function drawHud(ctx, p, state, cw, muted, strata, maxDepth) {
   ctx.save();
   ctx.fillStyle = 'rgba(13,10,20,0.82)';
   ctx.fillRect(0, 0, cw, 62);
@@ -43,11 +81,12 @@ export function drawHud(ctx, p, state, cw, muted) {
   ctx.fillText('DEPTH', 486, 20);
   ctx.font = 'bold 20px ui-monospace, monospace';
   ctx.fillText(`${p.ty}m`, 486, 39);
+  if (strata) descentBar(ctx, 552, 8, 10, 46, p.ty, maxDepth, strata);
 
   // mineral tally
   ctx.font = '11px ui-monospace, monospace';
   p.minerals.forEach((count, i) => {
-    const x = 580 + i * 46;
+    const x = 596 + i * 42;
     ctx.fillStyle = ORE_COLORS[i];
     ctx.fillRect(x, 26, 10, 10);
     ctx.fillStyle = INK;

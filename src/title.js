@@ -10,7 +10,7 @@ const LINES = [
   'Plant three charges. Climb out before they blow.',
 ];
 
-export function createTitle(assets, coarse) {
+export function createTitle(assets, coarse, save) {
   // The prompt says "any key", so listen for one directly rather than only the
   // handful the game maps. Installed here, which is after the studio ident has
   // resolved, so the gesture that skipped the ident cannot also start the game.
@@ -66,6 +66,17 @@ export function createTitle(assets, coarse) {
         ctx.font = 'bold 20px ui-monospace, monospace';
         const prompt = pad ? 'PRESS (A) TO DRILL' : coarse ? 'TAP TO DRILL' : 'PRESS ANY KEY TO DRILL';
         ctx.fillText(prompt, cw / 2, ch * 0.85);
+      }
+
+      // Progression belongs on the title too, or a returning player has no sign
+      // their last run mattered until they have already died again.
+      if (save && save.runs > 0) {
+        ctx.font = '11px ui-monospace, monospace';
+        ctx.fillStyle = '#8c85a0';
+        const planets = save.cracked === 1 ? '1 planet cracked' : `${save.cracked} planets cracked`;
+        ctx.fillText(`${save.runs} ${save.runs === 1 ? 'run' : 'runs'}   ${planets}`, cw / 2, ch * 0.905);
+        ctx.fillStyle = '#e8b02b';
+        ctx.fillText(`${save.credits} CR banked`, cw / 2, ch * 0.905 + 14);
       }
 
       ctx.fillStyle = '#5b556b';

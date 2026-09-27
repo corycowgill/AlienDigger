@@ -3,7 +3,7 @@
 
 import { loadAssets } from './assets.js';
 import { createInput } from './input.js';
-import { TILE, W, D, CORE_TOP, EMPTY, World, rng } from './world.js';
+import { TILE, W, D, CORE_TOP, EMPTY, STRATA, World, rng } from './world.js';
 import { createPlayer, updatePlayer, damage } from './player.js';
 import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard } from './entities.js';
 import { createFx } from './fx.js';
@@ -53,10 +53,10 @@ boot.remove();
 
 const input = createInput();
 const fx = createFx(assets);
-const title = createTitle(assets, COARSE);
-
 const audio = createAudio();
+
 const save = load();
+const title = createTitle(assets, COARSE, save);
 const foundry = createFoundry(save);
 let lastRun = null;
 
@@ -75,7 +75,7 @@ function reset(seed = Date.now() & 0xffff) {
   fx.clear();
   cam = { x: 0, y: 0 };
   state = {
-    time: 0, escaping: false, escapeLeft: 60,
+    time: 0, escaping: false, escapeLeft: 60, shake: 0,
     over: null,           // 'dead' | 'won' | 'boom'
     banked: 0,           // set once when the run ends
   };
@@ -179,8 +179,19 @@ function drawEntities() {
   }
   for (const a of aliens) {
     if (a.hp <= 0 || Math.abs(a.y - player.ty) > 22) continue;
-    drawSprite(frameOf(assets.anim.aliens[a.kind.row], a.t, 7),
-               a.px, a.py, a.boss ? TILE * 3 : TILE * 1.3);
+
+    // A burrower inside rock and an ambusher that has not woken both need to
+    // read differently, or the new behaviours are invisible and the player just
+    // sees things behaving oddly.
+    const inRock = world.solid(a.x, a.y);
+    const dormant = a.kind.ambush && !a.woke;
+    const frames = assets.anim.aliens[a.kind.row];
+    const img = dormant ? (frames && frames[0]) : frameOf(frames, a.t, 7);
+
+    if (inRock) ctx.globalAlpha = 0.45;
+    else if (dormant) ctx.globalAlpha = 0.7;
+    drawSprite(img, a.px, a.py, a.boss ? TILE * 3 : TILE * 1.3);
+    ctx.globalAlpha = 1;
   }
 }
 
@@ -280,6 +291,7 @@ function update(dt) {
     if (damage(player, a.kind.dmg, fx)) {
       fx.spawn('sparks', player.px + 16, player.py + 16);
       audio.hurt();
+      state.shake = Math.max(state.shake, 0.5);
     }
   }, (a) => {
     if (damage(player, a.kind.spitDmg, fx)) {
@@ -287,18 +299,20 @@ function update(dt) {
       fx.spawn('acidsplash', a.px + 16, a.py + 16, 0.6);
       fx.spawn('acidsplash', player.px + 16, player.py + 16);
       audio.hurt();
+      state.shake = Math.max(state.shake, 0.4);
     }
   });
   ramAliens(aliens, player, dt, (a) => {
     fx.spawn(a.boss ? 'explosion' : 'debris', a.px + 16, a.py + 16, a.boss ? 2 : 1);
     a.boss ? audio.explode() : audio.kill();
+    state.shake = Math.max(state.shake, a.boss ? 1.2 : 0.35);
     if (a.boss) player.minerals[4] += 5;
     else player.minerals[Math.min(4, Math.floor(a.y / 45))]++;
   });
 
   updateHazards(hazards, player, dt, (h) => {
     const r = applyHazard(h, player, world, fx);
-    if (typeof r === 'number') audio.hurt();
+    if (typeof r === 'number') { audio.hurt(); state.shake = Math.max(state.shake, 0.55); }
     else if (r === 'fuel') audio.warn();
   });
 
@@ -334,6 +348,7 @@ function update(dt) {
     } else if (state.escapeLeft <= 0) {
       state.over = 'boom';
       fx.spawn('explosion', player.px + 16, player.py + 16, 3);
+      state.shake = 1.6;
     }
   }
 
@@ -377,6 +392,7 @@ function update(dt) {
     };
   }
 
+  state.shake = Math.max(0, state.shake - dt * 3.4);
   fx.update(dt);
 
   // camera trails the drill, clamped to the world
@@ -405,6 +421,12 @@ function render() {
   ctx.beginPath();
   ctx.rect(0, VIEW_TOP, CW, CH - VIEW_TOP);
   ctx.clip();
+  // Shake the world, never the HUD -- a jittering fuel gauge is unreadable
+  // exactly when the player most needs to read it.
+  if (state.shake > 0) {
+    const k = state.shake * state.shake * 7;
+    ctx.translate(Math.round((Math.random() - 0.5) * k), Math.round((Math.random() - 0.5) * k));
+  }
   drawBackground();
   drawTerrain();
   drawEntities();
@@ -412,7 +434,7 @@ function render() {
   fx.draw(ctx, cam);
   ctx.restore();
 
-  drawHud(ctx, player, state, CW, audio.muted);
+  drawHud(ctx, player, state, CW, audio.muted, STRATA, CORE_TOP + 7);
 
   if (!state.over && player.ty > CORE_TOP) {
     const socket = nearestSocket();

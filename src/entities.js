@@ -13,12 +13,21 @@ const FUEL_TO_HULL = 2.31;
 // everything that came before it. HP is set so a kill costs more than one
 // invulnerability window: at 9 dmg/s of ramming a lurker takes ~1.7s, which is
 // three i-frames, so ramming it is a real decision against rerouting.
+// Each kind now behaves the way its sprite suggests. They all drifted and
+// chased identically before, which left the art carrying distinctions the rules
+// did not have -- a rock crab and a swarmlet played the same.
+//   burrows  passes through rock at or below this hardness, so it arrives
+//            through the wall of a shaft instead of needing a tunnel
+//   armor    fraction of ramming damage the shell shrugs off
+//   erratic  darts and reverses constantly instead of patrolling
+//   ambush   dormant until the drill is this close, then bolts
+//   ranged   spits down a clear tunnel instead of closing
 export const ALIEN_KINDS = [
-  { row: 'grubworm', hp: 4,  dmg: 6,  speed: 1.6, from: 8,  to: 70 },
-  { row: 'rockcrab', hp: 8, dmg: 10, speed: 1.1, from: 40, to: 140 },
+  { row: 'grubworm', hp: 4,  dmg: 6,  speed: 1.6, from: 8,  to: 70,  burrows: 0.75 },
+  { row: 'rockcrab', hp: 8,  dmg: 10, speed: 1.1, from: 40, to: 140, armor: 0.5 },
   { row: 'spitter',  hp: 9,  dmg: 12, speed: 1.3, from: 70, ranged: 5, spitDmg: 10 },
-  { row: 'swarmlet', hp: 2,  dmg: 4,  speed: 3.0, from: 20, to: 95 },
-  { row: 'lurker',   hp: 15, dmg: 16, speed: 2.1, from: 92 },
+  { row: 'swarmlet', hp: 2,  dmg: 4,  speed: 3.0, from: 20, to: 95,  erratic: true },
+  { row: 'lurker',   hp: 15, dmg: 16, speed: 2.1, from: 92, ambush: 5 },
 ];
 
 export const HAZARD_KINDS = [
@@ -171,9 +180,22 @@ export function updateAliens(aliens, world, player, dt, onHit, onSpit) {
       if (shot) continue;
     }
 
+    const dist = Math.abs(a.x - player.tx) + Math.abs(a.y - player.ty);
+
+    // A lurker is an ambush predator: it does not patrol, it waits. Nothing
+    // gives it away until the drill is close enough, and then it is fast.
+    if (a.kind.ambush) {
+      a.woke = a.woke || dist <= a.kind.ambush;
+      if (!a.woke) continue;
+    }
+
     // drift along open tunnels, turning at walls; chase when the drill is close
-    const chasing = Math.abs(a.x - player.tx) + Math.abs(a.y - player.ty) < 4;
-    const step = a.kind.speed * dt * (chasing ? 1.4 : 1) * 18;
+    const chasing = dist < (a.kind.ambush ? 9 : 4);
+    const rush = a.kind.ambush ? 2.0 : a.kind.erratic ? 1.7 : 1.4;
+    const step = a.kind.speed * dt * (chasing ? rush : 1) * 18;
+
+    // swarmlets dart rather than patrol, so they never settle into a line
+    if (a.kind.erratic && Math.random() < dt * 2.2) a.dx = -a.dx;
 
     let tx = a.x, ty = a.y;
     if (chasing) {
@@ -194,7 +216,12 @@ export function updateAliens(aliens, world, player, dt, onHit, onSpit) {
       else if (ty !== a.y && !world.solid(ax, a.y)) { tx = ax; ty = a.y; }
     }
 
-    if (world.solid(tx, ty)) {
+    // A grubworm is a burrower: soft strata are not walls to it, so it arrives
+    // through the side of a shaft rather than having to find its way round.
+    const canPass = !world.solid(tx, ty)
+      || (a.kind.burrows && world.hardness(tx, ty) <= a.kind.burrows);
+
+    if (!canPass) {
       a.dx = -a.dx;
     } else {
       const goalX = tx * TILE, goalY = ty * TILE;
@@ -215,7 +242,9 @@ export function ramAliens(aliens, player, dt, onKill) {
   for (const a of aliens) {
     if (a.hp <= 0) continue;
     if (a.x !== player.tx || a.y !== player.ty) continue;
-    a.hp -= (player.moving || player.drilling ? 14 : 0) * dt;
+    // a rock crab's shell is the point of it
+    const through = 1 - (a.kind.armor || 0);
+    a.hp -= (player.moving || player.drilling ? 14 : 0) * through * dt;
     if (a.hp <= 0) onKill(a);
   }
 }

@@ -208,7 +208,20 @@ export function populate(world, rand, density = 1) {
     pickups.push({ kind: PICKUPS[1], x: s.x, y: s.y - 2, taken: false });
   }
 
-  return { aliens, hazards, pickups };
+  // The surface was empty sky and the run just started in it. These are the
+  // five frames of the surfaceprop row, which had never been drawn: the drop
+  // capsule you came down in sits on the spawn column, so the descent starts
+  // somewhere and the climb out has something to climb back to.
+  const props = [{ row: 0, x: Math.floor(W / 2), y: 2, big: true }];
+  for (let k = 1; k < 5; k++) {
+    props.push({
+      row: k,
+      x: 3 + Math.floor(rand() * (W - 6)),
+      y: 2,
+    });
+  }
+
+  return { aliens, hazards, pickups, props };
 }
 
 // The Guardian used to be one verb: drive in and hold until it died. It now

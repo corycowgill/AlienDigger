@@ -12,6 +12,9 @@ export function createAudio() {
   let ctx = null;
   let master = null;
   let drillGain = null;
+  let droneGain = null;
+  let droneFilter = null;
+  let droneOscs = null;
   let alarmTimer = null;
   let noiseBuf = null;
 
@@ -51,6 +54,24 @@ export function createAudio() {
     src.connect(band).connect(drillGain).connect(master);
     src.start();
     drillGain.band = band;
+
+    // Ambience: two detuned low oscillators through a lowpass that closes as
+    // you descend, so the world gets heavier underfoot rather than the game
+    // playing in silence. Deliberately near-subsonic and quiet -- it should be
+    // noticed on the way out, not on the way in.
+    droneGain = ctx.createGain();
+    droneGain.gain.value = 0;
+    droneFilter = ctx.createBiquadFilter();
+    droneFilter.type = 'lowpass';
+    droneFilter.frequency.value = 300;
+    droneFilter.Q.value = 0.7;
+    droneOscs = [ctx.createOscillator(), ctx.createOscillator()];
+    droneOscs[0].type = 'sawtooth';
+    droneOscs[1].type = 'triangle';
+    droneOscs[0].frequency.value = 42;
+    droneOscs[1].frequency.value = 63;
+    for (const o of droneOscs) { o.connect(droneFilter); o.start(); }
+    droneFilter.connect(droneGain).connect(master);
 
     return true;
   }
@@ -109,6 +130,19 @@ export function createAudio() {
       const t = ctx.currentTime;
       drillGain.band.frequency.setTargetAtTime(1150 - Math.min(hardness, 2.5) * 260, t, 0.08);
       drillGain.gain.setTargetAtTime(active ? 0.09 : 0, t, 0.04);
+    },
+
+    // Called with 0..1 depth. Cheap enough to hit every frame: it only ever
+    // nudges targets, and the ramps do the work on the audio thread.
+    ambience(depth, escaping) {
+      if (!ensure() || !droneGain) return;
+      const t = ctx.currentTime;
+      const d = Math.max(0, Math.min(1, depth));
+      droneGain.gain.setTargetAtTime(0.055 + d * 0.07, t, 0.6);
+      droneFilter.frequency.setTargetAtTime(320 - d * 190, t, 0.6);
+      // the planet is armed and unhappy about it
+      droneOscs[0].frequency.setTargetAtTime(escaping ? 54 : 42 - d * 6, t, 0.8);
+      droneOscs[1].frequency.setTargetAtTime(escaping ? 81 : 63 - d * 9, t, 0.8);
     },
 
     breakTile(hardness = 1) { noise(0.16, 900 - hardness * 180, 0.36); },

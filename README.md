@@ -31,6 +31,8 @@ connected pad hides the touch controls.
 **Touch** — an on-screen d-pad and buttons appear automatically on touch devices.
 
 **Sound** — `M`, **LB**, or the SOUND button toggles it; the choice persists.
+Two detuned low oscillators drone under everything, and the filter closes as you
+descend, so the world gets heavier underfoot; arming the charges lifts it.
 Everything is synthesised at runtime from oscillators and filtered noise, so
 there are no audio assets to download. Browsers will not start an AudioContext
 without a user gesture, so it wakes on the keypress or tap that starts the run.

@@ -74,7 +74,7 @@ let lastRun = null;
 // the test hooks do not have to clear the screen first.
 let screen = new URLSearchParams(location.search).has('dev') ? 'playing' : 'title';
 
-let world, player, aliens, hazards, pickups, state, cam, hazardAt, diff;
+let world, player, aliens, hazards, pickups, props, state, cam, hazardAt, diff;
 // Terrain cache state. Declared up here because reset() runs at module load and
 // invalidates the cache, which would hit the temporal dead zone otherwise.
 let cacheOX = null, cacheOY = null, cacheRev = -1;
@@ -84,7 +84,7 @@ function reset(seed = Date.now() & 0xffff) {
   world = new World(seed, diff.hardness);
   const rand = rng(seed ^ 0x9e37);
   player = createPlayer(save.levels);
-  ({ aliens, hazards, pickups } = populate(world, rand, diff.density));
+  ({ aliens, hazards, pickups, props } = populate(world, rand, diff.density));
   hazardAt = new Set(hazards.map((h) => h.y * W + h.x));
   cacheOX = cacheOY = null;   // new world, cached terrain is meaningless
   fx.clear();
@@ -243,6 +243,15 @@ function drawSprite(img, px, py, box) {
 }
 
 function drawEntities() {
+  // Surface dressing. Only ever near the top, so it costs nothing at depth.
+  if (player.ty < 26) {
+    const frames = assets.anim.props.surfaceprop;
+    for (const pr of props) {
+      drawSprite(frames && frames[pr.row], pr.x * TILE, pr.y * TILE,
+                 pr.big ? TILE * 2.4 : TILE * 1.5);
+    }
+  }
+
   for (const h of hazards) {
     if (Math.abs(h.y - player.ty) > 22) continue;
     if (world.solid(h.x, h.y)) continue;      // still buried
@@ -482,6 +491,7 @@ function update(dt) {
   for (let i = 0; i < player.minerals.length; i++) lastMinerals[i] = player.minerals[i];
   audio.drill(player.drilling, player.drillTarget
     ? world.hardness(player.drillTarget.x, player.drillTarget.y) : 1);
+  audio.ambience(player.ty / CORE_TOP, state.escaping);
 
   updateAliens(aliens, world, player, dt, (a) => {
     if (a.hp <= 0) return;

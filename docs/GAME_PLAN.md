@@ -20,6 +20,7 @@ detonation. The blast shatters the planet and you harvest the precious minerals.
 > is in, all five pickup frames are live, and the refined-gem row now pops on
 > collection. Every art row the generator produced is used except the HUD and
 > UI kit sheets, whose job the hand-drawn HUD primitives do instead.
+> The drop capsule sits on the surface where the run starts and ends.
 
 ## Systems
 - **Digger**: 8-directional drill; drilling speed varies per material. Hull HP,

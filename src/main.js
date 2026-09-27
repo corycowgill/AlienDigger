@@ -11,6 +11,7 @@ import { drawHud, drawBanner } from './hud.js';
 import { createTitle } from './title.js';
 import { createFoundry } from './foundry.js';
 import { load, store, statsFor, valueOf } from './progress.js';
+import { createAudio } from './audio.js';
 
 const canvas = document.getElementById('screen');
 const ctx = canvas.getContext('2d');
@@ -54,6 +55,7 @@ const input = createInput();
 const fx = createFx(assets);
 const title = createTitle(assets, COARSE);
 
+const audio = createAudio();
 const save = load();
 const foundry = createFoundry(save);
 let lastRun = null;
@@ -221,14 +223,32 @@ function nearestSocket() {
   );
 }
 
+// The player module already spawns an effect at every moment worth hearing, so
+// the sound rides along with it rather than needing its own hooks threaded
+// through updatePlayer -- which would also have to change the simulator.
+const playerFx = {
+  spawn(row, x, y, scale) {
+    fx.spawn(row, x, y, scale);
+    if (row === 'dustpuff') {
+      audio.breakTile(player.drillTarget
+        ? world.hardness(player.drillTarget.x, player.drillTarget.y) : 1);
+    } else if (row === 'sparkle') {
+      audio.ore();
+    }
+  },
+};
+
 function update(dt) {
   // Gamepads are polled, not evented, and this has to happen wherever the game
   // steps -- the dev harness drives update() directly and never runs the loop.
   input.poll();
 
+  if (input.tapped('mute')) audio.toggleMute();
+
   if (screen === 'title') {
     title.update(dt);
     if (title.wantsStart(input)) {
+      audio.resume();
       screen = 'playing';
       reset();
     }
@@ -251,25 +271,44 @@ function update(dt) {
   if (input.tapped('restart')) { reset(); return; }
 
   state.time += dt;
-  updatePlayer(player, world, input, dt, fx);
+  updatePlayer(player, world, input, dt, playerFx);
+  audio.drill(player.drilling, player.drillTarget
+    ? world.hardness(player.drillTarget.x, player.drillTarget.y) : 1);
 
   updateAliens(aliens, world, player, dt, (a) => {
     if (a.hp <= 0) return;
-    if (damage(player, a.kind.dmg, fx)) fx.spawn('sparks', player.px + 16, player.py + 16);
+    if (damage(player, a.kind.dmg, fx)) {
+      fx.spawn('sparks', player.px + 16, player.py + 16);
+      audio.hurt();
+    }
+  }, (a) => {
+    if (damage(player, a.kind.spitDmg, fx)) {
+      // draw the acid leaving and arriving, not just the damage landing
+      fx.spawn('acidsplash', a.px + 16, a.py + 16, 0.6);
+      fx.spawn('acidsplash', player.px + 16, player.py + 16);
+      audio.hurt();
+    }
   });
   ramAliens(aliens, player, dt, (a) => {
     fx.spawn(a.boss ? 'explosion' : 'debris', a.px + 16, a.py + 16, a.boss ? 2 : 1);
+    a.boss ? audio.explode() : audio.kill();
     if (a.boss) player.minerals[4] += 5;
     else player.minerals[Math.min(4, Math.floor(a.y / 45))]++;
   });
 
-  updateHazards(hazards, player, dt, (h) => applyHazard(h, player, world, fx));
+  updateHazards(hazards, player, dt, (h) => {
+    const r = applyHazard(h, player, world, fx);
+    if (typeof r === 'number') audio.hurt();
+    else if (r === 'fuel') audio.warn();
+  });
 
   updatePickups(pickups, player, (u) => {
     if (u.kind.kind === 'fuel') {
       player.fuel = Math.min(player.stats.maxFuel, player.fuel + u.kind.amount);
+      audio.fuel();
     } else {
       player.hull = Math.min(player.stats.maxHull, player.hull + u.kind.amount);
+      audio.repair();
     }
     fx.spawn('sparkle', player.px + 16, player.py + 16);
   });
@@ -280,9 +319,11 @@ function update(dt) {
     player.charges--;
     player.planted++;
     fx.spawn('flash', socket.x * TILE + 16, socket.y * TILE + 16);
+    audio.plant();
     if (player.planted === 3) {
       state.escaping = true;
       state.escapeLeft = 60;
+      audio.alarm(true);
     }
   }
 
@@ -296,11 +337,18 @@ function update(dt) {
     }
   }
 
+  const lowFuel = player.fuel > 0 && player.fuel < player.stats.maxFuel * 0.22;
+  if (lowFuel) {
+    state.warnAt = (state.warnAt || 0) - dt;
+    if (state.warnAt <= 0) { audio.warn(); state.warnAt = 1.4; }
+  }
+
   // Starvation is otherwise invisible: the fuel bar sits empty and the hull
   // drains with no cue that you crossed from low into bleeding.
   if (player.fuel <= 0 && !player.dead && Math.floor(state.time * 3) % 2 === 0
       && Math.floor((state.time - dt) * 3) % 2 !== 0) {
     fx.spawn('sparks', player.px + 16, player.py + 16);
+    audio.warn();
   }
 
   if (player.dead) state.over = 'dead';
@@ -308,6 +356,11 @@ function update(dt) {
   // Bank once, however the run ended. A lost run still pays out what was dug,
   // at a cut, so a bad descent still moves the Foundry forward instead of being
   // wasted time.
+  if (state.over) {
+    audio.alarm(false);
+    audio.drill(false);
+  }
+
   if (state.over && !state.banked) {
     const full = valueOf(player.minerals, player.stats.cargoMult);
     state.banked = state.over === 'won' ? full : Math.round(full * 0.4);
@@ -315,6 +368,7 @@ function update(dt) {
     save.runs++;
     if (state.over === 'won') save.cracked++;
     store(save);
+    if (state.over === 'won') audio.win(); else audio.lose();
     lastRun = {
       cracked: state.over === 'won',
       line: state.over === 'won'
@@ -358,7 +412,7 @@ function render() {
   fx.draw(ctx, cam);
   ctx.restore();
 
-  drawHud(ctx, player, state, CW);
+  drawHud(ctx, player, state, CW, audio.muted);
 
   if (!state.over && player.ty > CORE_TOP) {
     const socket = nearestSocket();

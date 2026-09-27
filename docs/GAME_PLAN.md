@@ -15,9 +15,8 @@ detonation. The blast shatters the planet and you harvest the precious minerals.
 
 > **Status.** This is the design, not a description of the build. The Foundry
 > and all six upgrades are in, and minerals now buy them, so ore density is
-> live tuning. Still unbuilt: heat, 8-directional drilling (the drill moves on
-> 4), and the Spitter's ranged acid (it melees). Two of the five pickup art
-> frames are unused.
+> live tuning, and the Spitter now spits. Still unbuilt: heat and 8-directional
+> drilling (the drill moves on 4). Two of the five pickup art frames are unused.
 
 ## Systems
 - **Digger**: 8-directional drill; drilling speed varies per material. Hull HP, fuel, heat.
@@ -27,7 +26,8 @@ detonation. The blast shatters the planet and you harvest the precious minerals.
   crystal layer, magma layer, core shell, **CORE CHAMBER**.
 - **Hazards**: lava vents, pressurized gas pockets, acid pools, cave-ins/falling boulders,
   crusher rocks, electric mineral veins, void pits.
-- **Aliens**: Grubworm (burrower), Rock Crab (armored, blocks tunnels), Spitter (ranged acid),
+- **Aliens**: Grubworm (burrower), Rock Crab (armored, blocks tunnels), Spitter (ranged acid
+  down a clear tunnel; closes to melee without a line),
   Swarmlet (fast, packs), Tunnel Lurker (ambush), Core Guardian (boss).
 - **Minerals**: Copper, Iridium, Voidstone, Alien Amber, Pulse Crystal (rarity ascending).
 - **Upgrades**: drill bit tier, hull plating, fuel tank, cargo bay, scanner, thrusters.

@@ -18,7 +18,7 @@ function bar(ctx, x, y, w, h, frac, fill, label) {
   ctx.fillText(label, x, y - 6);
 }
 
-export function drawHud(ctx, p, state, cw) {
+export function drawHud(ctx, p, state, cw, muted) {
   ctx.save();
   ctx.fillStyle = 'rgba(13,10,20,0.82)';
   ctx.fillRect(0, 0, cw, 62);
@@ -62,6 +62,14 @@ export function drawHud(ctx, p, state, cw) {
     ctx.fillStyle = i < p.charges ? '#39d7e8' : '#2b2438';
     ctx.fillRect(824 + i * 16, 26, 11, 12);
   }
+  if (muted) {
+    ctx.fillStyle = '#6f6883';
+    ctx.font = '10px ui-monospace, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('MUTED [M]', cw - 12, 52);
+    ctx.textAlign = 'left';
+  }
+
   ctx.restore();
 }
 

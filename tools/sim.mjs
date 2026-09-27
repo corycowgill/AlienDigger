@@ -56,7 +56,7 @@ function run(seed, policy, levels = {}) {
   let t = 0, phase = 'descend';
   let fuelOuts = 0, hits = 0, deepest = 0;
   let escapeStart = null, dryTime = 0, dryInvulnTime = 0, blockedHits = 0;
-  let alienHits = 0, hazHits = 0, alienDmg = 0, hazDmg = 0, chamberHits = 0;
+  let alienHits = 0, spitHits = 0, hazHits = 0, alienDmg = 0, hazDmg = 0, chamberHits = 0;
 
   while (t < MAX_SECONDS) {
     // ---- policy picks a direction
@@ -90,6 +90,8 @@ function run(seed, policy, levels = {}) {
         updateAliens(aliens, world, player, DT, (a) => {
           if (a.hp <= 0) return;
           if (damage(player, a.kind.dmg, noFx)) { hits++; alienHits++; alienDmg += a.kind.dmg; if (player.ty > CORE_TOP) chamberHits++; } else blockedHits++;
+        }, (a) => {
+          if (damage(player, a.kind.spitDmg, noFx)) { hits++; spitHits++; alienDmg += a.kind.spitDmg; if (player.ty > CORE_TOP) chamberHits++; }
         });
         ramAliens(aliens, player, DT, () => {});
         updatePickups(pickups, player, (u) => {
@@ -131,6 +133,10 @@ function run(seed, policy, levels = {}) {
     updateAliens(aliens, world, player, DT, (a) => {
       if (a.hp <= 0) return;
       if (damage(player, a.kind.dmg, noFx)) { hits++; alienHits++; alienDmg += a.kind.dmg; if (player.ty > CORE_TOP) chamberHits++; } else blockedHits++;
+    }, (a) => {
+      // ranged spit is its own, weaker attack -- without this the harness
+      // measures a game where the one ranged enemy does no damage at all
+      if (damage(player, a.kind.spitDmg, noFx)) { hits++; spitHits++; alienDmg += a.kind.spitDmg; if (player.ty > CORE_TOP) chamberHits++; }
     });
     ramAliens(aliens, player, DT, () => {});
     updateHazards(hazards, player, DT, (h) => {
@@ -166,7 +172,7 @@ function run(seed, policy, levels = {}) {
     fuelOuts,
     hits,
     blockedHits,
-    alienHits, hazHits, alienDmg, hazDmg, chamberHits,
+    alienHits, spitHits, hazHits, alienDmg, hazDmg, chamberHits,
     dryTime: +dryTime.toFixed(1),
     dryInvulnPct: dryTime > 0 ? Math.round(100 * dryInvulnTime / dryTime) : 0,
     coreDepth: CORE_TOP + 7,
@@ -222,7 +228,7 @@ for (const policy of ['beeline', 'greedy']) {
   console.log(`  avg hull at end: ${avg((r) => r.hull)}   ran dry: ${results.filter((r) => r.fuelOuts).length}/${runs}`);
   console.log(`  avg seconds at zero fuel: ${avg((r) => r.dryTime)}   of which invulnerable: ${avg((r) => r.dryInvulnPct)}%`);
   console.log(`  avg contacts blocked by i-frames: ${avg((r) => r.blockedHits)}`);
-  console.log(`  damage split -> aliens: ${avg((r) => r.alienHits)} hits / ${avg((r) => r.alienDmg)} hull   hazards: ${avg((r) => r.hazHits)} hits / ${avg((r) => r.hazDmg)} hull`);
+  console.log(`  damage split -> aliens: ${avg((r) => r.alienHits)} hits / ${avg((r) => r.alienDmg)} hull   spit: ${avg((r) => r.spitHits)} hits   hazards: ${avg((r) => r.hazHits)} hits / ${avg((r) => r.hazDmg)} hull`);
   console.log(`  hits taken inside the core chamber: ${avg((r) => r.chamberHits)}`);
   const dead = results.filter((r) => r.dead);
   if (dead.length) {

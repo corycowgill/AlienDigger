@@ -16,7 +16,7 @@ const FUEL_TO_HULL = 2.31;
 export const ALIEN_KINDS = [
   { row: 'grubworm', hp: 4,  dmg: 6,  speed: 1.6, from: 8,  to: 70 },
   { row: 'rockcrab', hp: 8, dmg: 10, speed: 1.1, from: 40, to: 140 },
-  { row: 'spitter',  hp: 9,  dmg: 12, speed: 1.3, from: 70 },
+  { row: 'spitter',  hp: 9,  dmg: 12, speed: 1.3, from: 70, ranged: 5, spitDmg: 10 },
   { row: 'swarmlet', hp: 2,  dmg: 4,  speed: 3.0, from: 20, to: 95 },
   { row: 'lurker',   hp: 15, dmg: 16, speed: 2.1, from: 92 },
 ];
@@ -115,7 +115,10 @@ export function populate(world, rand) {
   // and 63% of all damage in a run landed here. A designed layout keeps the
   // climax a fight instead of a blender: one sentry short of each socket, and a
   // hazard between them so the approach has to be picked.
-  const guard = ALIEN_KINDS.find((k) => k.row === 'spitter');
+  // Melee, deliberately. Three Spitters here turned the Guardian fight into a
+  // shooting gallery with nothing to break line of sight behind -- measured,
+  // that alone took the win rate from 72% to 7%.
+  const guard = ALIEN_KINDS.find((k) => k.row === 'rockcrab');
   const deep = HAZARD_KINDS.find((k) => k.row === 'lavavent');
   world.chargeSockets.forEach((sock, i) => {
     aliens.push({
@@ -139,11 +142,34 @@ export function populate(world, rand) {
   return { aliens, hazards, pickups };
 }
 
-export function updateAliens(aliens, world, player, dt, onHit) {
+export function updateAliens(aliens, world, player, dt, onHit, onSpit) {
   for (const a of aliens) {
     a.t += dt;
     const near = Math.abs(a.y - player.ty) < 24;
     if (!near) continue;
+
+    // The Spitter is the one alien that does not have to reach you. It needs a
+    // clear line down a tunnel, which makes it a reason to pick a different
+    // route rather than another thing to ram -- every kind behaved identically
+    // before this, so the art was carrying differences the rules did not have.
+    if (a.kind.ranged) {
+      a.spitCd = (a.spitCd || 0) - dt;
+      const dx = player.tx - a.x, dy = player.ty - a.y;
+      const straight = (dx === 0) !== (dy === 0);
+      const dist = Math.abs(dx) + Math.abs(dy);
+      // A shot needs a straight, unobstructed run of tunnel. It holds position
+      // only when it actually has one -- holding whenever the player was merely
+      // close meant it stopped closing AND could not fire, which quietly turned
+      // the game's one ranged enemy into the most harmless thing in it.
+      const shot = straight && dist <= a.kind.ranged && clearLine(world, a, player);
+      if (shot && a.spitCd <= 0) {
+        a.spitCd = 2.5;
+        a.spitting = 0.45;
+        onSpit?.(a);
+      }
+      a.spitting = Math.max(0, (a.spitting || 0) - dt);
+      if (shot) continue;
+    }
 
     // drift along open tunnels, turning at walls; chase when the drill is close
     const chasing = Math.abs(a.x - player.tx) + Math.abs(a.y - player.ty) < 4;
@@ -192,6 +218,17 @@ export function ramAliens(aliens, player, dt, onKill) {
     a.hp -= (player.moving || player.drilling ? 14 : 0) * dt;
     if (a.hp <= 0) onKill(a);
   }
+}
+
+// Nothing solid between the two, along a straight run of tiles.
+function clearLine(world, a, player) {
+  const sx = Math.sign(player.tx - a.x), sy = Math.sign(player.ty - a.y);
+  let x = a.x + sx, y = a.y + sy;
+  while (x !== player.tx || y !== player.ty) {
+    if (world.solid(x, y)) return false;
+    x += sx; y += sy;
+  }
+  return true;
 }
 
 export function updateHazards(hazards, player, dt, onHit) {

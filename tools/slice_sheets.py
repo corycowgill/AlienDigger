@@ -51,6 +51,12 @@ ROW_NAMES = {
     "alien_digger_08_charges_props": [
         "charge", "planted", "armed", "coreprop", "surfaceprop",
     ],
+    "alien_digger_11_guardian_states": [
+        "armoured", "opening", "exposed", "windup", "slam",
+    ],
+    "alien_digger_12_drill_diagonals": [
+        "downright", "upright", "downright_hurt", "upright_hurt",
+    ],
     "alien_digger_06_hud_sheet": ["hud"],
     "alien_digger_09_ui_kit": ["ui"],
 }

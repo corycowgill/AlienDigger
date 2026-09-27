@@ -331,6 +331,35 @@ function drawLight() {
 // 0,1,2,0,1,2 snaps hard on the wrap, which is most of why these read as choppy;
 // 0,1,2,1 turns the same three frames into a smooth there-and-back. Two-frame
 // cycles are already symmetric, so they just alternate.
+// The Guardian's core is described as blazing when it opens, and the core
+// chamber is the darkest place in the game, so it should light the room. Drawn
+// after the darkness rather than before it, so the glow punches through -- and
+// it doubles as the clearest possible tell that the boss is open.
+function drawBossGlow() {
+  const g = aliens.find((a) => a.boss && a.hp > 0);
+  if (!g) return;
+  const open = g.phase === 'exposed' ? 1 : g.phase === 'opening' ? 0.45 : 0.12;
+  if (open <= 0.12 && g.phase !== 'windup') {
+    if (g.phase !== 'armoured') return;
+  }
+  const pulse = 0.82 + Math.sin(state.time * 7) * 0.18;
+  const r = TILE * (g.phase === 'windup' ? 2.2 : 3.4) * (0.6 + open * 0.4);
+  const cx = Math.round(g.px + TILE / 2 - cam.x);
+  const cy = Math.round(g.py + TILE / 2 - cam.y);
+
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  const warm = g.phase === 'windup' ? '255,70,40' : '255,168,70';
+  grd.addColorStop(0, `rgba(${warm},${(0.5 * open * pulse).toFixed(3)})`);
+  grd.addColorStop(0.5, `rgba(${warm},${(0.22 * open * pulse).toFixed(3)})`);
+  grd.addColorStop(1, `rgba(${warm},0)`);
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = grd;
+  ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+  ctx.restore();
+}
+
 function frameOf(frames, t, fps = 8) {
   if (!frames || !frames.length) return null;
   const n = frames.length;
@@ -387,8 +416,22 @@ function drawEntities() {
     // sees things behaving oddly.
     const inRock = world.solid(a.x, a.y);
     const dormant = a.kind.ambush && !a.woke;
-    const frames = assets.anim.aliens[a.kind.row];
-    const img = dormant ? (frames && frames[0]) : frameOf(frames, a.t, 10);
+    // The Guardian has art per phase now, so the state is in the sprite rather
+    // than only in a coloured overlay: sealed and plated, plates splitting, core
+    // wide open, fists up, fists down.
+    let frames = assets.anim.aliens[a.kind.row];
+    let img;
+    if (a.boss && a.hp > 0) {
+      const boss = assets.anim.boss;
+      const set = a.phase === 'exposed' ? boss.exposed
+                : a.phase === 'windup' ? boss.windup
+                : a.phase === 'slam' ? boss.slam
+                : a.phaseT < 0.5 ? boss.opening      // tell just before it opens
+                : boss.armoured;
+      img = frameOf(set, a.t, a.phase === 'slam' ? 14 : 8);
+    } else {
+      img = dormant ? (frames && frames[0]) : frameOf(frames, a.t, 10);
+    }
 
     // The boss telegraphs: a ring while it winds up so the blast radius is
     // visible, and a glow while it is open and worth committing to.
@@ -467,15 +510,25 @@ function drawPlayer() {
   const p = player;
   if (p.invuln > 0 && Math.floor(state.time * 20) % 2) return;
 
-  // The drill has four sprite sets and eight headings, so a diagonal renders as
-  // whichever cardinal it leans on.
   const facing = p.facing || 'down';
-  let row = 'right';
-  if (p.hull < p.stats.maxHull * 0.35) row = 'damage';
-  else if (facing.startsWith('down')) row = 'down';
-  else if (facing.startsWith('up')) row = 'thruster';
+  const hurt = p.hull < p.stats.maxHull * 0.35;
+  const diagonal = facing.length > 4;      // 'upleft', 'downright', ...
 
-  const frames = assets.anim.drill[row];
+  // Diagonals have their own art now. They are drawn rightward and mirrored for
+  // the left headings, the same trick the cardinal sheet already uses.
+  let frames;
+  if (diagonal) {
+    const up = facing.startsWith('up');
+    frames = assets.anim.diag[
+      up ? (hurt ? 'upright_hurt' : 'upright') : (hurt ? 'downright_hurt' : 'downright')
+    ];
+  } else {
+    let row = 'right';
+    if (hurt) row = 'damage';
+    else if (facing === 'down') row = 'down';
+    else if (facing === 'up') row = 'thruster';
+    frames = assets.anim.drill[row];
+  }
   if (!frames || !frames.length) return;
   const img = frames[Math.floor(p.frame) % frames.length];
   if (!img) return;
@@ -836,6 +889,7 @@ function render() {
   drawPlayer();
   fx.draw(ctx, cam);
   drawLight();
+  drawBossGlow();
   floaters.draw(ctx, cam);
   ctx.restore();
 

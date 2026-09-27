@@ -333,6 +333,90 @@
       }
     }
   },
+  "alien_digger_11_guardian_states": {
+    "animations": {
+      "armoured": {
+        "frames": [
+          "game/alien_digger_11_guardian_states/armoured_00.png",
+          "game/alien_digger_11_guardian_states/armoured_01.png",
+          "game/alien_digger_11_guardian_states/armoured_02.png"
+        ],
+        "count": 3
+      },
+      "opening": {
+        "frames": [
+          "game/alien_digger_11_guardian_states/opening_00.png",
+          "game/alien_digger_11_guardian_states/opening_01.png",
+          "game/alien_digger_11_guardian_states/opening_02.png"
+        ],
+        "count": 3
+      },
+      "exposed": {
+        "frames": [
+          "game/alien_digger_11_guardian_states/exposed_00.png",
+          "game/alien_digger_11_guardian_states/exposed_01.png",
+          "game/alien_digger_11_guardian_states/exposed_02.png"
+        ],
+        "count": 3
+      },
+      "windup": {
+        "frames": [
+          "game/alien_digger_11_guardian_states/windup_00.png",
+          "game/alien_digger_11_guardian_states/windup_01.png",
+          "game/alien_digger_11_guardian_states/windup_02.png"
+        ],
+        "count": 3
+      },
+      "slam": {
+        "frames": [
+          "game/alien_digger_11_guardian_states/slam_00.png",
+          "game/alien_digger_11_guardian_states/slam_01.png",
+          "game/alien_digger_11_guardian_states/slam_02.png"
+        ],
+        "count": 3
+      }
+    }
+  },
+  "alien_digger_12_drill_diagonals": {
+    "animations": {
+      "downright": {
+        "frames": [
+          "game/alien_digger_12_drill_diagonals/downright_00.png",
+          "game/alien_digger_12_drill_diagonals/downright_01.png",
+          "game/alien_digger_12_drill_diagonals/downright_02.png",
+          "game/alien_digger_12_drill_diagonals/downright_03.png"
+        ],
+        "count": 4
+      },
+      "upright": {
+        "frames": [
+          "game/alien_digger_12_drill_diagonals/upright_00.png",
+          "game/alien_digger_12_drill_diagonals/upright_01.png",
+          "game/alien_digger_12_drill_diagonals/upright_02.png",
+          "game/alien_digger_12_drill_diagonals/upright_03.png"
+        ],
+        "count": 4
+      },
+      "downright_hurt": {
+        "frames": [
+          "game/alien_digger_12_drill_diagonals/downright_hurt_00.png",
+          "game/alien_digger_12_drill_diagonals/downright_hurt_01.png",
+          "game/alien_digger_12_drill_diagonals/downright_hurt_02.png",
+          "game/alien_digger_12_drill_diagonals/downright_hurt_03.png"
+        ],
+        "count": 4
+      },
+      "upright_hurt": {
+        "frames": [
+          "game/alien_digger_12_drill_diagonals/upright_hurt_00.png",
+          "game/alien_digger_12_drill_diagonals/upright_hurt_01.png",
+          "game/alien_digger_12_drill_diagonals/upright_hurt_02.png",
+          "game/alien_digger_12_drill_diagonals/upright_hurt_03.png"
+        ],
+        "count": 4
+      }
+    }
+  },
   "alien_digger_03_terrain_tiles": {
     "tiles": [
       "game/alien_digger_03_terrain_tiles/tile_r0_c0.png",

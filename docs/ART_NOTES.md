@@ -49,6 +49,20 @@ which is how both the tileset gutters and the background rules read.
 
 Current output: **226 frames across 10 sheets.**
 
+## Later sheets
+
+Two sheets were generated after the game had been built, to replace places where
+the code was compensating for missing art:
+
+- `alien_digger_11_guardian_states` gives the boss a sprite per phase. The fight
+  reads its state from the art now rather than from a coloured overlay on the
+  same three frames.
+- `alien_digger_12_drill_diagonals` covers the four diagonal headings. Eight-way
+  drilling had been folding onto the nearest cardinal sprite.
+
+Both were prompted in the original ChatGPT conversation so the palette matched
+without having to re-describe it.
+
 ## Known rough edges
 
 These are AI-generated sheets, so a few frames need a human pass before they ship:

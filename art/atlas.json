@@ -1649,6 +1649,388 @@
       }
     ]
   },
+  "alien_digger_11_guardian_states": {
+    "source": "sprites/alien_digger_11_guardian_states.png",
+    "frames": [
+      {
+        "name": "armoured_00",
+        "row": "armoured",
+        "index": 0,
+        "file": "sliced/alien_digger_11_guardian_states/armoured_00.png",
+        "rect": {
+          "x": 17,
+          "y": 15,
+          "w": 343,
+          "h": 225
+        }
+      },
+      {
+        "name": "armoured_01",
+        "row": "armoured",
+        "index": 1,
+        "file": "sliced/alien_digger_11_guardian_states/armoured_01.png",
+        "rect": {
+          "x": 400,
+          "y": 15,
+          "w": 350,
+          "h": 225
+        }
+      },
+      {
+        "name": "armoured_02",
+        "row": "armoured",
+        "index": 2,
+        "file": "sliced/alien_digger_11_guardian_states/armoured_02.png",
+        "rect": {
+          "x": 786,
+          "y": 15,
+          "w": 341,
+          "h": 225
+        }
+      },
+      {
+        "name": "opening_00",
+        "row": "opening",
+        "index": 0,
+        "file": "sliced/alien_digger_11_guardian_states/opening_00.png",
+        "rect": {
+          "x": 25,
+          "y": 256,
+          "w": 335,
+          "h": 232
+        }
+      },
+      {
+        "name": "opening_01",
+        "row": "opening",
+        "index": 1,
+        "file": "sliced/alien_digger_11_guardian_states/opening_01.png",
+        "rect": {
+          "x": 398,
+          "y": 250,
+          "w": 353,
+          "h": 238
+        }
+      },
+      {
+        "name": "opening_02",
+        "row": "opening",
+        "index": 2,
+        "file": "sliced/alien_digger_11_guardian_states/opening_02.png",
+        "rect": {
+          "x": 784,
+          "y": 250,
+          "w": 340,
+          "h": 238
+        }
+      },
+      {
+        "name": "exposed_00",
+        "row": "exposed",
+        "index": 0,
+        "file": "sliced/alien_digger_11_guardian_states/exposed_00.png",
+        "rect": {
+          "x": 10,
+          "y": 497,
+          "w": 350,
+          "h": 219
+        }
+      },
+      {
+        "name": "exposed_01",
+        "row": "exposed",
+        "index": 1,
+        "file": "sliced/alien_digger_11_guardian_states/exposed_01.png",
+        "rect": {
+          "x": 371,
+          "y": 497,
+          "w": 393,
+          "h": 219
+        }
+      },
+      {
+        "name": "exposed_02",
+        "row": "exposed",
+        "index": 2,
+        "file": "sliced/alien_digger_11_guardian_states/exposed_02.png",
+        "rect": {
+          "x": 776,
+          "y": 497,
+          "w": 359,
+          "h": 219
+        }
+      },
+      {
+        "name": "windup_00",
+        "row": "windup",
+        "index": 0,
+        "file": "sliced/alien_digger_11_guardian_states/windup_00.png",
+        "rect": {
+          "x": 39,
+          "y": 718,
+          "w": 299,
+          "h": 322
+        }
+      },
+      {
+        "name": "windup_01",
+        "row": "windup",
+        "index": 1,
+        "file": "sliced/alien_digger_11_guardian_states/windup_01.png",
+        "rect": {
+          "x": 380,
+          "y": 718,
+          "w": 352,
+          "h": 322
+        }
+      },
+      {
+        "name": "windup_02",
+        "row": "windup",
+        "index": 2,
+        "file": "sliced/alien_digger_11_guardian_states/windup_02.png",
+        "rect": {
+          "x": 791,
+          "y": 718,
+          "w": 312,
+          "h": 322
+        }
+      },
+      {
+        "name": "slam_00",
+        "row": "slam",
+        "index": 0,
+        "file": "sliced/alien_digger_11_guardian_states/slam_00.png",
+        "rect": {
+          "x": 12,
+          "y": 1053,
+          "w": 345,
+          "h": 296
+        }
+      },
+      {
+        "name": "slam_01",
+        "row": "slam",
+        "index": 1,
+        "file": "sliced/alien_digger_11_guardian_states/slam_01.png",
+        "rect": {
+          "x": 370,
+          "y": 1053,
+          "w": 408,
+          "h": 296
+        }
+      },
+      {
+        "name": "slam_02",
+        "row": "slam",
+        "index": 2,
+        "file": "sliced/alien_digger_11_guardian_states/slam_02.png",
+        "rect": {
+          "x": 784,
+          "y": 1053,
+          "w": 354,
+          "h": 292
+        }
+      }
+    ]
+  },
+  "alien_digger_12_drill_diagonals": {
+    "source": "sprites/alien_digger_12_drill_diagonals.png",
+    "frames": [
+      {
+        "name": "downright_00",
+        "row": "downright",
+        "index": 0,
+        "file": "sliced/alien_digger_12_drill_diagonals/downright_00.png",
+        "rect": {
+          "x": 28,
+          "y": 16,
+          "w": 348,
+          "h": 242
+        }
+      },
+      {
+        "name": "downright_01",
+        "row": "downright",
+        "index": 1,
+        "file": "sliced/alien_digger_12_drill_diagonals/downright_01.png",
+        "rect": {
+          "x": 406,
+          "y": 16,
+          "w": 348,
+          "h": 242
+        }
+      },
+      {
+        "name": "downright_02",
+        "row": "downright",
+        "index": 2,
+        "file": "sliced/alien_digger_12_drill_diagonals/downright_02.png",
+        "rect": {
+          "x": 782,
+          "y": 16,
+          "w": 349,
+          "h": 242
+        }
+      },
+      {
+        "name": "downright_03",
+        "row": "downright",
+        "index": 3,
+        "file": "sliced/alien_digger_12_drill_diagonals/downright_03.png",
+        "rect": {
+          "x": 1153,
+          "y": 16,
+          "w": 351,
+          "h": 242
+        }
+      },
+      {
+        "name": "upright_00",
+        "row": "upright",
+        "index": 0,
+        "file": "sliced/alien_digger_12_drill_diagonals/upright_00.png",
+        "rect": {
+          "x": 26,
+          "y": 273,
+          "w": 350,
+          "h": 208
+        }
+      },
+      {
+        "name": "upright_01",
+        "row": "upright",
+        "index": 1,
+        "file": "sliced/alien_digger_12_drill_diagonals/upright_01.png",
+        "rect": {
+          "x": 403,
+          "y": 273,
+          "w": 357,
+          "h": 208
+        }
+      },
+      {
+        "name": "upright_02",
+        "row": "upright",
+        "index": 2,
+        "file": "sliced/alien_digger_12_drill_diagonals/upright_02.png",
+        "rect": {
+          "x": 785,
+          "y": 273,
+          "w": 345,
+          "h": 208
+        }
+      },
+      {
+        "name": "upright_03",
+        "row": "upright",
+        "index": 3,
+        "file": "sliced/alien_digger_12_drill_diagonals/upright_03.png",
+        "rect": {
+          "x": 1151,
+          "y": 273,
+          "w": 353,
+          "h": 208
+        }
+      },
+      {
+        "name": "downright_hurt_00",
+        "row": "downright_hurt",
+        "index": 0,
+        "file": "sliced/alien_digger_12_drill_diagonals/downright_hurt_00.png",
+        "rect": {
+          "x": 36,
+          "y": 489,
+          "w": 345,
+          "h": 265
+        }
+      },
+      {
+        "name": "downright_hurt_01",
+        "row": "downright_hurt",
+        "index": 1,
+        "file": "sliced/alien_digger_12_drill_diagonals/downright_hurt_01.png",
+        "rect": {
+          "x": 418,
+          "y": 489,
+          "w": 355,
+          "h": 268
+        }
+      },
+      {
+        "name": "downright_hurt_02",
+        "row": "downright_hurt",
+        "index": 2,
+        "file": "sliced/alien_digger_12_drill_diagonals/downright_hurt_02.png",
+        "rect": {
+          "x": 796,
+          "y": 489,
+          "w": 342,
+          "h": 268
+        }
+      },
+      {
+        "name": "downright_hurt_03",
+        "row": "downright_hurt",
+        "index": 3,
+        "file": "sliced/alien_digger_12_drill_diagonals/downright_hurt_03.png",
+        "rect": {
+          "x": 1174,
+          "y": 489,
+          "w": 340,
+          "h": 268
+        }
+      },
+      {
+        "name": "upright_hurt_00",
+        "row": "upright_hurt",
+        "index": 0,
+        "file": "sliced/alien_digger_12_drill_diagonals/upright_hurt_00.png",
+        "rect": {
+          "x": 24,
+          "y": 759,
+          "w": 348,
+          "h": 234
+        }
+      },
+      {
+        "name": "upright_hurt_01",
+        "row": "upright_hurt",
+        "index": 1,
+        "file": "sliced/alien_digger_12_drill_diagonals/upright_hurt_01.png",
+        "rect": {
+          "x": 407,
+          "y": 759,
+          "w": 345,
+          "h": 234
+        }
+      },
+      {
+        "name": "upright_hurt_02",
+        "row": "upright_hurt",
+        "index": 2,
+        "file": "sliced/alien_digger_12_drill_diagonals/upright_hurt_02.png",
+        "rect": {
+          "x": 790,
+          "y": 759,
+          "w": 349,
+          "h": 234
+        }
+      },
+      {
+        "name": "upright_hurt_03",
+        "row": "upright_hurt",
+        "index": 3,
+        "file": "sliced/alien_digger_12_drill_diagonals/upright_hurt_03.png",
+        "rect": {
+          "x": 1168,
+          "y": 759,
+          "w": 339,
+          "h": 234
+        }
+      }
+    ]
+  },
   "alien_digger_05_hazards_sheet": {
     "source": "tiles/alien_digger_05_hazards_sheet.png",
     "frames": [

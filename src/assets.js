@@ -11,6 +11,8 @@ const SHEETS = {
   hazards: 'alien_digger_05_hazards_sheet',
   fx: 'alien_digger_07_fx_sheet',
   props: 'alien_digger_08_charges_props',
+  boss: 'alien_digger_11_guardian_states',
+  diag: 'alien_digger_12_drill_diagonals',
 };
 const TILES = 'alien_digger_03_terrain_tiles';
 const BG_SHEET = 'alien_digger_10_backgrounds';
@@ -34,6 +36,13 @@ export async function loadAssets(onProgress) {
   const anim = {};
   for (const [key, sheet] of Object.entries(SHEETS)) {
     anim[key] = {};
+    // A sheet the atlas does not carry costs us that sheet, not the whole load.
+    // A stale cached atlas took the entire game down with an undefined read,
+    // which is a silly way to lose a boot.
+    if (!atlas[sheet] || !atlas[sheet].animations) {
+      console.warn(`atlas has no animations for ${sheet}`);
+      continue;
+    }
     for (const [row, data] of Object.entries(atlas[sheet].animations)) {
       const frames = new Array(data.frames.length);
       anim[key][row] = frames;

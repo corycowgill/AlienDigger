@@ -39,6 +39,8 @@ TARGET = {
     "alien_digger_05_hazards_sheet": 48,
     "alien_digger_07_fx_sheet": 64,
     "alien_digger_08_charges_props": 48,
+    "alien_digger_11_guardian_states": 96,
+    "alien_digger_12_drill_diagonals": 64,
 }
 TILE_SHEET = "alien_digger_03_terrain_tiles"
 TILE_SIZE = 32
@@ -62,6 +64,8 @@ COUNTS = {
     "explosion": 6, "dustpuff": 4, "debris": 4, "sparks": 4,
     "flash": 4, "smoke": 5, "acidsplash": 4, "shieldhit": 4,
     "charge": 3, "planted": 4, "armed": 4, "coreprop": 5, "surfaceprop": 5,
+    "armoured": 3, "opening": 3, "exposed": 3, "windup": 3, "slam": 3,
+    "downright": 4, "upright": 4, "downright_hurt": 4, "upright_hurt": 4,
 }
 
 

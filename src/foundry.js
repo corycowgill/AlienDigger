@@ -5,6 +5,9 @@
 
 import { UPGRADES, costOf, buy, statsFor, store } from './progress.js';
 
+const ORE_NAMES = ['Cu', 'Ir', 'Vd', 'Am', 'Pc'];
+const ORE_COLORS = ['#e07a2b', '#d8dbe6', '#7a4fd6', '#e8b02b', '#39d7e8'];
+
 const INK = '#d7d2e0';
 const DIM = '#8c85a0';
 const TRIM = '#2fd2e8';
@@ -63,17 +66,47 @@ export function createFoundry(save) {
       ctx.fillText('THE FOUNDRY', cw / 2, 46);
 
       if (lastRun) {
-        ctx.font = '12px ui-monospace, monospace';
+        ctx.font = 'bold 12px ui-monospace, monospace';
         ctx.fillStyle = lastRun.cracked ? TRIM : '#ff6b5b';
-        ctx.fillText(lastRun.line, cw / 2, 68);
+        ctx.fillText(lastRun.line, cw / 2, 66);
+
+        // What the run was actually made of, rather than one number. A salvaged
+        // run shows the cut it took, so the cost of dying is legible.
+        const mins = Math.floor(lastRun.time / 60);
+        const secs = String(lastRun.time % 60).padStart(2, '0');
+        ctx.font = '11px ui-monospace, monospace';
+        ctx.fillStyle = DIM;
+        ctx.fillText(`${lastRun.depth}m reached   ${mins}:${secs} elapsed`, cw / 2, 82);
+
+        const total = lastRun.minerals.reduce((a, c) => a + c, 0);
+        if (total) {
+          const span = lastRun.minerals.length * 54;
+          let x = cw / 2 - span / 2 + 10;
+          ctx.textAlign = 'left';
+          lastRun.minerals.forEach((n, i) => {
+            ctx.fillStyle = n ? ORE_COLORS[i] : '#3a3448';
+            ctx.fillRect(x, 92, 8, 8);
+            ctx.fillStyle = n ? INK : '#4a4458';
+            ctx.font = '10px ui-monospace, monospace';
+            ctx.fillText(`${ORE_NAMES[i]} ${n}`, x + 12, 100);
+            x += 54;
+          });
+          ctx.textAlign = 'center';
+        }
+        if (!lastRun.cracked && lastRun.gross > lastRun.banked) {
+          ctx.fillStyle = '#7a5a2a';
+          ctx.font = '10px ui-monospace, monospace';
+          ctx.fillText(`${lastRun.gross} CR dug, ${lastRun.gross - lastRun.banked} lost with the drill`,
+                       cw / 2, 114);
+        }
       }
 
       ctx.font = 'bold 16px ui-monospace, monospace';
       ctx.fillStyle = GOLD;
-      ctx.fillText(`${save.credits} CR`, cw / 2, 94);
+      ctx.fillText(`${save.credits} CR`, cw / 2, 136);
 
       // upgrade rows
-      const top = 118, rowH = 52, panelW = 620, x0 = (cw - panelW) / 2;
+      const top = 150, rowH = 46, panelW = 620, x0 = (cw - panelW) / 2;
       UPGRADES.forEach((u, i) => {
         const y = top + i * rowH;
         const lvl = save.levels[u.key] | 0;
@@ -98,7 +131,7 @@ export function createFoundry(save) {
         // level pips
         for (let k = 0; k < u.max; k++) {
           ctx.fillStyle = k < lvl ? TRIM : '#2b2438';
-          ctx.fillRect(x0 + 330 + k * 16, y + 12, 11, 11);
+          ctx.fillRect(x0 + 330 + k * 16, y + 10, 11, 11);
         }
 
         ctx.textAlign = 'right';

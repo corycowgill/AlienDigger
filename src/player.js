@@ -46,7 +46,14 @@ export function createPlayer(levels) {
 
 const DELTA = {
   left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1],
+  upleft: [-1, -1], upright: [1, -1],
+  downleft: [-1, 1], downright: [1, 1],
 };
+
+// A diagonal covers more ground, so it costs proportionally more to cut and to
+// cross. Without this, cutting a staircase would be a strictly cheaper way down
+// than a straight shaft and nobody would ever dig straight again.
+const DIAG = Math.SQRT2;
 
 export function updatePlayer(p, world, input, dt, fx) {
   p.invuln = Math.max(0, p.invuln - dt);
@@ -54,7 +61,7 @@ export function updatePlayer(p, world, input, dt, fx) {
 
   // finish an in-progress move before accepting new input
   if (p.moving) {
-    p.moving.t += dt / p.stats.moveTime;
+    p.moving.t += dt / (p.stats.moveTime * (p.moving.diag ? DIAG : 1));
     const t = Math.min(1, p.moving.t);
     p.px = p.moving.fromX * TILE + (p.moving.toX - p.moving.fromX) * TILE * t;
     p.py = p.moving.fromY * TILE + (p.moving.toY - p.moving.fromY) * TILE * t;
@@ -79,6 +86,7 @@ export function updatePlayer(p, world, input, dt, fx) {
 
   p.facing = dir;
   const [dx, dy] = DELTA[dir];
+  const diag = dx !== 0 && dy !== 0;
   const nx = p.tx + dx, ny = p.ty + dy;
 
   if (!world.inBounds(nx, ny)) { p.drilling = false; return; }
@@ -98,7 +106,7 @@ export function updatePlayer(p, world, input, dt, fx) {
       fx.spawn('debris', nx * TILE + TILE / 2, ny * TILE + TILE / 2);
     }
 
-    if (p.drillProgress >= world.hardness(nx, ny)) {
+    if (p.drillProgress >= world.hardness(nx, ny) * (diag ? DIAG : 1)) {
       const ore = world.dig(nx, ny);
       if (ore >= 0) {
         p.minerals[ore]++;
@@ -107,13 +115,13 @@ export function updatePlayer(p, world, input, dt, fx) {
       fx.spawn('dustpuff', nx * TILE + TILE / 2, ny * TILE + TILE / 2);
       p.drillProgress = 0;
       p.drillTarget = null;
-      p.moving = { fromX: p.tx, fromY: p.ty, toX: nx, toY: ny, t: 0 };
+      p.moving = { fromX: p.tx, fromY: p.ty, toX: nx, toY: ny, t: 0, diag };
     }
   } else {
     p.drilling = false;
     p.drillProgress = 0;
     p.drillTarget = null;
-    p.moving = { fromX: p.tx, fromY: p.ty, toX: nx, toY: ny, t: 0 };
+    p.moving = { fromX: p.tx, fromY: p.ty, toX: nx, toY: ny, t: 0, diag };
   }
 
   // Fuel starvation drains the hull directly, deliberately bypassing the i-frame

@@ -23,6 +23,9 @@ ctx.imageSmoothingEnabled = false;
 
 // Devices without a real keyboard get the on-screen pad.
 const COARSE = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+// Screen shake is the one thing here that can make someone ill, so it is opt-out
+// at the OS level. The studio ident already honours this; the game should too.
+const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (COARSE) document.body.classList.add('touch');
 
 // The canvas renders at a fixed 960x600 and is scaled with CSS, so the pixel art
@@ -131,7 +134,9 @@ function drawTerrain() {
 
       // crack the tile the drill is currently grinding
       if (player.drillTarget && player.drillTarget.x === x && player.drillTarget.y === y) {
-        const f = player.drillProgress / Math.max(0.01, world.hardness(x, y));
+        const dg = x !== player.tx && y !== player.ty;
+        const need = Math.max(0.01, world.hardness(x, y) * (dg ? Math.SQRT2 : 1));
+        const f = player.drillProgress / need;
         const warn = f > 0.7 && hazardAt.has(y * W + x);
         ctx.fillStyle = warn
           ? 'rgba(255,60,40,' + (0.25 + Math.sin(state.time * 22) * 0.18) + ')'
@@ -199,10 +204,13 @@ function drawPlayer() {
   const p = player;
   if (p.invuln > 0 && Math.floor(state.time * 20) % 2) return;
 
+  // The drill has four sprite sets and eight headings, so a diagonal renders as
+  // whichever cardinal it leans on.
+  const facing = p.facing || 'down';
   let row = 'right';
   if (p.hull < p.stats.maxHull * 0.35) row = 'damage';
-  else if (p.facing === 'down') row = 'down';
-  else if (p.facing === 'up') row = 'thruster';
+  else if (facing.startsWith('down')) row = 'down';
+  else if (facing.startsWith('up')) row = 'thruster';
 
   const frames = assets.anim.drill[row];
   if (!frames || !frames.length) return;
@@ -214,7 +222,7 @@ function drawPlayer() {
   const w = img.width * scale, h = img.height * scale;
   ctx.save();
   ctx.translate(Math.round(p.px - cam.x + TILE / 2), Math.round(p.py - cam.y + TILE / 2));
-  if (p.facing === 'left') ctx.scale(-1, 1);
+  if (facing.endsWith('left')) ctx.scale(-1, 1);
   ctx.drawImage(img, Math.round(-w / 2), Math.round(-h / 2), Math.round(w), Math.round(h));
   ctx.restore();
 }
@@ -387,8 +395,14 @@ function update(dt) {
     lastRun = {
       cracked: state.over === 'won',
       line: state.over === 'won'
-        ? `planet cracked -- full haul banked, ${state.banked} CR`
-        : `run lost at ${player.ty}m -- salvage only, ${state.banked} CR`,
+        ? 'PLANET CRACKED -- full haul banked'
+        : state.over === 'boom' ? 'STILL INSIDE -- salvage only'
+        : `DRILL LOST AT ${player.ty}m -- salvage only`,
+      depth: player.ty,
+      time: Math.round(state.time),
+      minerals: [...player.minerals],
+      banked: state.banked,
+      gross: valueOf(player.minerals, player.stats.cargoMult),
     };
   }
 
@@ -423,7 +437,7 @@ function render() {
   ctx.clip();
   // Shake the world, never the HUD -- a jittering fuel gauge is unreadable
   // exactly when the player most needs to read it.
-  if (state.shake > 0) {
+  if (state.shake > 0 && !REDUCED_MOTION) {
     const k = state.shake * state.shake * 7;
     ctx.translate(Math.round((Math.random() - 0.5) * k), Math.round((Math.random() - 0.5) * k));
   }

@@ -18,6 +18,9 @@ python -m http.server 8765
 ```
 
 **Keyboard** — `WASD` / arrow keys to drill, `E` to plant a charge, `R` to restart.
+Hold two directions to cut a diagonal: it costs √2 as much to drill and to
+cross, so a staircase is never a cheaper way straight down, only a cheaper way
+sideways.
 
 **Gamepad** — an Xbox controller (or anything reporting the standard mapping)
 is picked up automatically: left stick or d-pad to drill, **A** to plant and to

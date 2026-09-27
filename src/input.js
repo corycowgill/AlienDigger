@@ -154,9 +154,13 @@ export function createInput() {
       pressed.delete(a);
       return true;
     },
+    // Two held directions combine into a diagonal. Vertical is named first so
+    // the player module can read one key consistently.
     direction() {
-      for (const d of DIRS) if (down.has(d)) return d;
-      return null;
+      const v = down.has('up') ? 'up' : down.has('down') ? 'down' : '';
+      const h = down.has('left') ? 'left' : down.has('right') ? 'right' : '';
+      if (v && h) return v + h;
+      return v || h || null;
     },
     endFrame() { pressed.clear(); },
   };

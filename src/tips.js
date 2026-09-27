@@ -17,10 +17,13 @@ export const TIPS = {
   guardian: 'WATCH THE BAR — RAM IT WHEN IT IS OPEN, CLEAR THE RING ON A SLAM',
 };
 
+const BANNER_LIFE = 2.6;
+
 export function createTips(save) {
   // taught is part of the save, so a hint survives the run that triggered it
   if (!save.taught) save.taught = {};
   let current = null;
+  let banner = null;
 
   return {
     // returns true if it fired, so the caller knows to persist the save
@@ -31,15 +34,45 @@ export function createTips(save) {
       return true;
     },
 
+    // Not gated by the save: this fires every time, because it is telling you
+    // where you are rather than teaching you something once.
+    announce(text, sub) {
+      banner = { text, sub, t: 0 };
+    },
+
     update(dt) {
+      if (banner) {
+        banner.t += dt;
+        if (banner.t >= BANNER_LIFE) banner = null;
+      }
       if (!current) return;
       current.t += dt;
       if (current.t >= LIFE) current = null;
     },
 
-    clear() { current = null; },
+    clear() { current = null; banner = null; },
 
     draw(ctx, cw, ch) {
+      if (banner) {
+        const k = banner.t / BANNER_LIFE;
+        const a = k < 0.15 ? k / 0.15 : k > 0.72 ? (1 - k) / 0.28 : 1;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, a));
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(8,5,16,0.55)';
+        ctx.fillRect(0, ch * 0.30, cw, 48);
+        ctx.fillStyle = '#d7d2e0';
+        ctx.font = 'bold 20px ui-monospace, monospace';
+        ctx.fillText(banner.text, cw / 2, ch * 0.30 + 24);
+        if (banner.sub) {
+          ctx.fillStyle = '#8c85a0';
+          ctx.font = '11px ui-monospace, monospace';
+          ctx.fillText(banner.sub, cw / 2, ch * 0.30 + 40);
+        }
+        ctx.restore();
+        ctx.textAlign = 'left';
+      }
+
       if (!current) return;
       const k = current.t;
       const alpha = k < FADE ? k / FADE

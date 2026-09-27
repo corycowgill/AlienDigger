@@ -3,7 +3,7 @@
 
 import { loadAssets } from './assets.js';
 import { createInput } from './input.js';
-import { TILE, W, D, CORE_TOP, EMPTY, STRATA, World, rng } from './world.js';
+import { TILE, W, D, CORE_TOP, EMPTY, STRATA, World, rng, strataAt } from './world.js';
 import { createPlayer, updatePlayer, damage } from './player.js';
 import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup } from './entities.js';
 import { createFx } from './fx.js';
@@ -95,7 +95,7 @@ function reset(seed = Date.now() & 0xffff) {
   lastMinerals.fill(0);
   cam = { x: 0, y: 0 };
   state = {
-    time: 0, escaping: false, escapeLeft: diff.escape, shake: 0, tremor: 3,
+    time: 0, escaping: false, escapeLeft: diff.escape, shake: 0, tremor: 3, band: null,
     over: null,           // 'dead' | 'won' | 'boom'
     banked: 0,           // set once when the run ends
   };
@@ -136,6 +136,26 @@ function drawBackground() {
 // tiles, so the bottom row straddled the canvas edge and a scroll left an
 // 8-pixel band of stale rock behind it -- visible as horizontal streaks across
 // the lower half of the screen.
+// Cached one-pixel-wide gradients, stamped and stretched rather than built per
+// tile -- there are a few hundred edges on screen and createLinearGradient is
+// not free.
+const edgeStrip = {};
+function shadeEdge(x, y, w, h, dx, dy) {
+  const key = `${dx},${dy}`;
+  let g = edgeStrip[key];
+  if (!g) {
+    g = tctx.createLinearGradient(0, 0, dx * EDGE, dy * EDGE);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(2,1,6,0.62)');
+    edgeStrip[key] = g;
+  }
+  tctx.save();
+  tctx.translate(dx > 0 ? x : dx < 0 ? x + w : x, dy > 0 ? y : dy < 0 ? y + h : y);
+  tctx.fillStyle = g;
+  tctx.fillRect(dx < 0 ? -w : 0, dy < 0 ? -h : 0, w, h);
+  tctx.restore();
+}
+
 const CACHE_COLS = Math.ceil((CW + TILE * 2) / TILE);
 const CACHE_ROWS = Math.ceil((CH + TILE * 2) / TILE);
 
@@ -144,6 +164,9 @@ terrain.width = CACHE_COLS * TILE;
 terrain.height = CACHE_ROWS * TILE;
 const tctx = terrain.getContext('2d');
 tctx.imageSmoothingEnabled = false;
+
+// Depth of the shadow cast into open space by the rock around it.
+const EDGE = 7;
 
 function paintTiles(ox, oy, x0, y0, x1, y1) {
   for (let ty = y0; ty < y1; ty++) {
@@ -156,7 +179,17 @@ function paintTiles(ox, oy, x0, y0, x1, y1) {
 
       const i = world.idx(x, y);
       const row = world.tiles[i];
-      if (row === EMPTY) continue;
+
+      // Open space next to rock gets a shadow along the shared edge. Without
+      // it a tunnel is just an absence -- the background showing through a hole
+      // -- and a shaft you cut reads exactly like a cavern you walked into.
+      if (row === EMPTY) {
+        if (world.solid(x, y - 1)) shadeEdge(sx, sy, TILE, EDGE, 0, 1);
+        if (world.solid(x, y + 1)) shadeEdge(sx, sy + TILE - EDGE, TILE, EDGE, 0, -1);
+        if (world.solid(x - 1, y)) shadeEdge(sx, sy, EDGE, TILE, 1, 0);
+        if (world.solid(x + 1, y)) shadeEdge(sx + TILE - EDGE, sy, EDGE, TILE, -1, 0);
+        continue;
+      }
 
       const img = assets.tile(row, world.variant[i]);
       if (img) tctx.drawImage(img, sx, sy, TILE, TILE);
@@ -673,6 +706,17 @@ function update(dt) {
       fx.spawn('explosion', player.px + 16, player.py + 16, 3);
       state.shake = 1.6;
     }
+  }
+
+  // Name each stratum as you break into it, so the descent has waypoints rather
+  // than just a rising number.
+  const band = strataAt(player.ty);
+  if (band !== state.band) {
+    if (state.band) {
+      tips.announce(band.name.toUpperCase(),
+                    `${player.ty}m   ${band.heat > 6 ? 'runs hot' : band.heat < 0 ? 'runs cold' : ''}`.trim());
+    }
+    state.band = band;
   }
 
   // Teach each mechanic the first time it bites, once per save.

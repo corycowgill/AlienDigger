@@ -128,6 +128,9 @@ The repo is a static site with nothing to build, so any static host works. On
 
 `index.html` sits at the repo root, so the game loads at the site root.
 
+Each stratum names itself as you break into it -- ICE, 80m, runs cold -- so the
+descent has waypoints rather than only a rising number.
+
 ## Teaching
 
 Six first-time hints fire the moment the thing they explain is actually
@@ -156,7 +159,9 @@ as at 60.
 
 ## Look
 
-The drill carries its own light and the dark closes in with depth. Tile variants
+Open space takes a shadow along every edge it shares with rock, so a shaft you
+cut reads as carved rather than as an absence where the background shows
+through. The drill carries its own light and the dark closes in with depth. Tile variants
 are chosen from a noise field rather than at random, so similar rock clusters
 into patches instead of scattering six unrelated textures across every layer,
 and the seam between two strata is bled together over a few tiles rather than

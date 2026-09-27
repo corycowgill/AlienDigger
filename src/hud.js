@@ -57,7 +57,7 @@ function bar(ctx, x, y, w, h, frac, fill, label) {
   ctx.fillText(label, x, y - 6);
 }
 
-export function drawHud(ctx, p, state, cw, muted, strata, maxDepth) {
+export function drawHud(ctx, p, state, cw, muted, strata, maxDepth, diff) {
   ctx.save();
   ctx.fillStyle = 'rgba(13,10,20,0.82)';
   ctx.fillRect(0, 0, cw, 62);
@@ -132,6 +132,14 @@ export function drawHud(ctx, p, state, cw, muted, strata, maxDepth) {
     ctx.fillText(`${label} ${left.toFixed(1)}s`, x, 52);
     ctx.fillRect(x, 55, Math.round(96 * Math.min(1, left / 9)), 2);
   });
+
+  if (diff && diff.planet > 1) {
+    ctx.fillStyle = '#e8b02b';
+    ctx.font = 'bold 10px ui-monospace, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`PLANET ${diff.planet}`, cw - 12, 20);
+    ctx.textAlign = 'left';
+  }
 
   if (muted) {
     ctx.fillStyle = '#6f6883';

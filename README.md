@@ -44,6 +44,11 @@ cracked, a 40% salvage if the drill did -- and spent at **the Foundry** between
 runs on six upgrades: drill bit, fuel tank, hull plating, scanner, thrusters and
 cargo bay. Credits and levels persist in `localStorage`.
 
+Planets get harder as you crack them: tougher rock, busier caves, a tighter
+climb out -- and a bigger payout, so the risk is chosen rather than imposed.
+Upgrades outpace that for a while and then the escalation catches back up, so a
+maxed drill on planet 15 is still a real run.
+
 The base game is tuned so a fresh save is hard: simulated, competent play clears
 about two runs in three and a careless straight dig about one in twelve. Upgrades
 buy the margin back rather than starting with it -- a part-kitted drill clears
@@ -115,6 +120,7 @@ The repo is a static site with nothing to build, so any static host works. On
 ```bash
 node tools/sim.mjs 60                  # whole descents, headless, two policies
 node tools/sim.mjs 60 drill=2,hull=2   # ... at a given upgrade level
+node tools/sim.mjs 60 drill=5 9        # ... on the 10th planet
 node tools/supply.mjs 200              # is the deep game still supplyable?
 node tools/census.mjs 20               # what a generated world actually contains
 ```

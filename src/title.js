@@ -74,7 +74,8 @@ export function createTitle(assets, coarse, save) {
         ctx.font = '11px ui-monospace, monospace';
         ctx.fillStyle = '#8c85a0';
         const planets = save.cracked === 1 ? '1 planet cracked' : `${save.cracked} planets cracked`;
-        ctx.fillText(`${save.runs} ${save.runs === 1 ? 'run' : 'runs'}   ${planets}`, cw / 2, ch * 0.905);
+        const next = save.cracked > 0 ? `   next: planet ${save.cracked + 1}` : '';
+        ctx.fillText(`${save.runs} ${save.runs === 1 ? 'run' : 'runs'}   ${planets}${next}`, cw / 2, ch * 0.905);
         ctx.fillStyle = '#e8b02b';
         ctx.fillText(`${save.credits} CR banked`, cw / 2, ch * 0.905 + 14);
       }

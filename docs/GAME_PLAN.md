@@ -11,7 +11,8 @@ detonation. The blast shatters the planet and you harvest the precious minerals.
 3. **Harvest** — collect minerals for upgrades; collect fuel cells to extend the run.
 4. **Plant** — reach the core chamber, plant N charges in sequence.
 5. **Escape** — timer flips to countdown, drill back up to the surface.
-6. **Payout** — planet detonates, minerals banked, spend at the Foundry, next planet.
+6. **Payout** — planet detonates, minerals banked, spend at the Foundry, next
+   planet — which is tougher, busier and pays more than the last.
 
 > **Status.** This is the design, not a description of the build. The Foundry
 > and all six upgrades are in, and minerals now buy them, so ore density is

@@ -11,7 +11,7 @@ import { drawHud, drawBanner } from './hud.js';
 import { createTitle } from './title.js';
 import { createFoundry } from './foundry.js';
 import { createHelp } from './help.js';
-import { load, store, statsFor, valueOf } from './progress.js';
+import { load, store, statsFor, valueOf, difficultyFor } from './progress.js';
 import { createAudio } from './audio.js';
 
 const canvas = document.getElementById('screen');
@@ -70,18 +70,19 @@ let lastRun = null;
 // the test hooks do not have to clear the screen first.
 let screen = new URLSearchParams(location.search).has('dev') ? 'playing' : 'title';
 
-let world, player, aliens, hazards, pickups, state, cam, hazardAt;
+let world, player, aliens, hazards, pickups, state, cam, hazardAt, diff;
 
 function reset(seed = Date.now() & 0xffff) {
-  world = new World(seed);
+  diff = difficultyFor(save.cracked);
+  world = new World(seed, diff.hardness);
   const rand = rng(seed ^ 0x9e37);
   player = createPlayer(save.levels);
-  ({ aliens, hazards, pickups } = populate(world, rand));
+  ({ aliens, hazards, pickups } = populate(world, rand, diff.density));
   hazardAt = new Set(hazards.map((h) => h.y * W + h.x));
   fx.clear();
   cam = { x: 0, y: 0 };
   state = {
-    time: 0, escaping: false, escapeLeft: 60, shake: 0,
+    time: 0, escaping: false, escapeLeft: diff.escape, shake: 0,
     over: null,           // 'dead' | 'won' | 'boom'
     banked: 0,           // set once when the run ends
   };
@@ -358,7 +359,7 @@ function update(dt) {
     audio.plant();
     if (player.planted === 3) {
       state.escaping = true;
-      state.escapeLeft = 60;
+      state.escapeLeft = diff.escape;
       audio.alarm(true);
     }
   }
@@ -399,7 +400,7 @@ function update(dt) {
   }
 
   if (state.over && !state.banked) {
-    const full = valueOf(player.minerals, player.stats.cargoMult);
+    const full = valueOf(player.minerals, player.stats.cargoMult, diff.payout);
     state.banked = state.over === 'won' ? full : Math.round(full * 0.4);
     save.credits += state.banked;
     save.runs++;
@@ -416,7 +417,7 @@ function update(dt) {
       time: Math.round(state.time),
       minerals: [...player.minerals],
       banked: state.banked,
-      gross: valueOf(player.minerals, player.stats.cargoMult),
+      gross: valueOf(player.minerals, player.stats.cargoMult, diff.payout),
     };
   }
 
@@ -466,7 +467,7 @@ function render() {
   fx.draw(ctx, cam);
   ctx.restore();
 
-  drawHud(ctx, player, state, CW, audio.muted, STRATA, CORE_TOP + 7);
+  drawHud(ctx, player, state, CW, audio.muted, STRATA, CORE_TOP + 7, diff);
 
   if (!state.over && player.ty > CORE_TOP) {
     const socket = nearestSocket();

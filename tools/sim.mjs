@@ -11,11 +11,11 @@
 import { TILE, W, D, CORE_TOP, EMPTY, World, strataAt, rng } from '../src/world.js';
 import { createPlayer, updatePlayer, damage } from '../src/player.js';
 import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup } from '../src/entities.js';
-import { statsFor } from '../src/progress.js';
+import { statsFor, difficultyFor } from '../src/progress.js';
 
 const DT = 1 / 60;
 const MAX_SECONDS = 1200;
-const ESCAPE_BUDGET = 60;   // must track state.escapeLeft in main.js
+
 
 const noFx = { spawn() {} };
 
@@ -45,10 +45,11 @@ function nearestPickup(pickups, p, radius, want) {
   return best;
 }
 
-function run(seed, policy, levels = {}) {
-  const world = new World(seed);
+function run(seed, policy, levels = {}, planet = 0) {
+  const diff = difficultyFor(planet);
+  const world = new World(seed, diff.hardness);
   const player = createPlayer(levels);
-  const { aliens, hazards, pickups } = populate(world, rng(seed ^ 0x9e37));
+  const { aliens, hazards, pickups } = populate(world, rng(seed ^ 0x9e37), diff.density);
   const input = scriptedInput();
   const shaftX = player.tx;     // the column the descent was dug down
 
@@ -162,7 +163,7 @@ function run(seed, policy, levels = {}) {
     if (phase === 'escape') {
       const spent = t - escapeStart;
       if (player.ty <= 3) { log.escaped = true; log.escapeSecs = +spent.toFixed(1); break; }
-      if (spent > ESCAPE_BUDGET) { log.escapeSecs = +spent.toFixed(1); log.tooSlow = true; break; }
+      if (spent > diff.escape) { log.escapeSecs = +spent.toFixed(1); log.tooSlow = true; break; }
     }
     t += DT;
   }
@@ -211,7 +212,9 @@ const runs = Number(process.argv[2] || 40);
 // node tools/sim.mjs 60 drill=2,hull=1  -> simulate a part-upgraded drill
 const levels = Object.fromEntries((process.argv[3] || '').split(',').filter(Boolean)
   .map((kv) => { const [k, v] = kv.split('='); return [k, Number(v) || 0]; }));
+const planet = Number(process.argv[4] || 0);
 if (Object.keys(levels).length) console.log('upgrades:', JSON.stringify(levels));
+if (planet) console.log('planet:', planet + 1);
 
 console.log('=== fuel cost of drilling every tile of a 200-tile column ===');
 const b = drillBudget();
@@ -222,7 +225,7 @@ console.log(`  TOTAL ${b.total} fuel vs a ${statsFor({}).maxFuel}-unit tank = ${
 
 for (const policy of ['beeline', 'greedy']) {
   const results = [];
-  for (let i = 0; i < runs; i++) results.push(run(1000 + i, policy, levels));
+  for (let i = 0; i < runs; i++) results.push(run(1000 + i, policy, levels, planet));
   const won = results.filter((r) => r.escaped).length;
   const cored = results.filter((r) => r.reachedCore).length;
   const died = results.filter((r) => r.dead).length;
@@ -248,7 +251,7 @@ for (const policy of ['beeline', 'greedy']) {
   const esc = results.filter((r) => r.escapeSecs != null);
   if (esc.length) {
     const secs = esc.map((r) => r.escapeSecs);
-    console.log(`  escape climb: avg ${(secs.reduce((a, c) => a + c, 0) / secs.length).toFixed(1)}s  max ${Math.max(...secs)}s  of ${ESCAPE_BUDGET}s budget   timed out: ${results.filter((r) => r.tooSlow).length}/${runs}`);
+    console.log(`  escape climb: avg ${(secs.reduce((a, c) => a + c, 0) / secs.length).toFixed(1)}s  max ${Math.max(...secs)}s  of ${difficultyFor(planet).escape}s budget   timed out: ${results.filter((r) => r.tooSlow).length}/${runs}`);
   }
   const sample = results.slice(0, 5).map((r) => `d${r.deepest}/${r.dead ? 'dead' : r.escaped ? 'WON' : 'stuck'}`).join('  ');
   console.log(`  sample: ${sample}\n`);

@@ -97,7 +97,7 @@ export function applyPickup(u, player) {
 const BURIED_PICKUP = 0.042;
 const BURIED_HAZARD = 0.012;
 
-export function populate(world, rand) {
+export function populate(world, rand, density = 1) {
   const aliens = [];
   const hazards = [];
   const pickups = [];
@@ -109,7 +109,7 @@ export function populate(world, rand) {
         // can only ever stand in a tile that has been dug out.
         if (rand() < BURIED_PICKUP) {
           pickups.push({ kind: rollPickup(rand, y), x, y, taken: false });
-        } else if (rand() < BURIED_HAZARD) {
+        } else if (rand() < BURIED_HAZARD * density) {
           const pool = HAZARD_KINDS.filter((k) => y >= k.from);
           if (pool.length) {
             const kind = pool[Math.floor(rand() * pool.length)];
@@ -119,7 +119,7 @@ export function populate(world, rand) {
         continue;
       }
 
-      if (rand() < 0.03) {
+      if (rand() < 0.03 * density) {
         const pool = ALIEN_KINDS.filter((k) => y >= k.from && y < (k.to ?? Infinity));
         if (pool.length) {
           const kind = pool[Math.floor(rand() * pool.length)];
@@ -128,7 +128,7 @@ export function populate(world, rand) {
             dx: rand() < 0.5 ? -1 : 1, px: x * TILE, py: y * TILE,
           });
         }
-      } else if (rand() < 0.035) {
+      } else if (rand() < 0.035 * density) {
         const pool = HAZARD_KINDS.filter((k) => y >= k.from);
         if (pool.length) {
           const kind = pool[Math.floor(rand() * pool.length)];

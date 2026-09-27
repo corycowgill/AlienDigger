@@ -100,6 +100,21 @@ export function statsFor(levels) {
   };
 }
 
+// Planets get harder as you crack them, or the Foundry eventually outruns the
+// game and every later run is a formality. Rock gets tougher, the caves get
+// busier, the climb out gets tighter -- and the haul is worth more, so the risk
+// is chosen rather than imposed.
+export function difficultyFor(planet) {
+  const n = Math.max(0, planet | 0);
+  return {
+    planet: n + 1,
+    hardness: 1 + 0.06 * n,
+    density: 1 + 0.10 * n,
+    escape: Math.max(40, 60 - 2 * n),
+    payout: 1 + 0.18 * n,
+  };
+}
+
 export function costOf(upgrade, levels) {
   const lvl = levels[upgrade.key] | 0;
   return lvl >= upgrade.max ? null : upgrade.cost(lvl);
@@ -114,6 +129,6 @@ export function buy(save, upgrade) {
 }
 
 // Ore is worth more the rarer it is; the cargo bay scales the whole haul.
-export function valueOf(minerals, cargoMult) {
-  return Math.round(minerals.reduce((a, c, i) => a + c * (i + 1) * 10, 0) * cargoMult);
+export function valueOf(minerals, cargoMult, payout = 1) {
+  return Math.round(minerals.reduce((a, c, i) => a + c * (i + 1) * 10, 0) * cargoMult * payout);
 }

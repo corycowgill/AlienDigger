@@ -55,7 +55,7 @@ function smoothNoise(rand, w, h, scale) {
 }
 
 export class World {
-  constructor(seed = 1337) {
+  constructor(seed = 1337, hardnessScale = 1) {
     const rand = rng(seed);
     this.rand = rand;
     this.tiles = new Int8Array(W * D);      // strata row, or EMPTY
@@ -79,7 +79,7 @@ export class World {
         const threshold = 0.72 + (y / D) * 0.16;
         const edge = x < 2 || x > W - 3;          // keep the shaft walls solid
         this.tiles[i] = (!edge && openness > threshold) ? EMPTY : s.row;
-        this.hp[i] = s.hardness;
+        this.hp[i] = s.hardness * hardnessScale;
       }
     }
 

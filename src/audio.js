@@ -179,6 +179,8 @@ export function createAudio() {
     win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.26, 0.2, 'square', null, i * 0.13)); },
     lose() { [392, 330, 262, 196].forEach((f, i) => tone(f, 0.3, 0.2, 'sawtooth', null, i * 0.16)); },
     warn() { tone(1000, 0.08, 0.12, 'square'); },
+    // a falling zap with a little grit under it
+    laser() { tone(1500, 0.18, 0.16, 'sawtooth', 220); noise(0.12, 2400, 0.14); },
 
     // The escape countdown gets its own pulse so the clock is audible while the
     // player is watching the shaft rather than the HUD. Driven from the game

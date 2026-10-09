@@ -6,6 +6,7 @@ import { createInput } from './input.js';
 import { TILE, W, D, CORE_TOP, EMPTY, STRATA, World, rng, strataAt } from './world.js';
 import { createPlayer, updatePlayer, damage } from './player.js';
 import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup } from './entities.js';
+import { updateLaser, laserReady, LASER } from './laser.js';
 import { createFx } from './fx.js';
 import { createFloaters } from './floaters.js';
 import { drawHud, drawBanner } from './hud.js';
@@ -571,6 +572,26 @@ function drawPlayer() {
   ctx.restore();
 }
 
+// The beam is drawn hot-white at the core with a magenta bloom, fading over
+// its short life so a shot reads as a flash rather than a standing line.
+function drawBeam() {
+  const b = player.beam;
+  if (!b || state.wreck) return;
+  const k = Math.max(0, b.t / LASER.show);
+  const x0 = b.x0 * TILE + TILE / 2 - cam.x, y0 = b.y0 * TILE + TILE / 2 - cam.y;
+  const x1 = x0 + b.dx * b.len * TILE, y1 = y0 + b.dy * b.len * TILE;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = `rgba(255,60,200,${(0.45 * k).toFixed(3)})`;
+  ctx.lineWidth = 12 * k + 2;
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  ctx.strokeStyle = `rgba(255,235,255,${(0.95 * k).toFixed(3)})`;
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  ctx.restore();
+}
+
 // ------------------------------------------------------------------ update
 
 function guardianAlive() {
@@ -600,6 +621,17 @@ const playerFx = {
     }
   },
 };
+
+// Ramming and the laser both kill, and a kill pays the same either way.
+function alienKilled(a) {
+  fx.spawn(a.boss ? 'explosion' : 'debris', a.px + 16, a.py + 16, a.boss ? 2 : 1);
+  a.boss ? audio.explode() : audio.kill();
+  state.shake = Math.max(state.shake, a.boss ? 1.2 : 0.35);
+  if (a.boss) player.minerals[4] += 5;
+  else player.minerals[Math.min(4, Math.floor(a.y / 45))]++;
+  // keep the ore-pop logic from mistaking the bounty for something dug
+  for (let i = 0; i < player.minerals.length; i++) lastMinerals[i] = player.minerals[i];
+}
 
 function update(dt) {
   // Gamepads are polled, not evented, and this has to happen wherever the game
@@ -718,13 +750,41 @@ function update(dt) {
       floaters.push(`-${a.kind.slam}`, player.px + 16, player.py, '#ff6b5b');
     }
   });
-  ramAliens(aliens, player, dt, (a) => {
-    fx.spawn(a.boss ? 'explosion' : 'debris', a.px + 16, a.py + 16, a.boss ? 2 : 1);
-    a.boss ? audio.explode() : audio.kill();
-    state.shake = Math.max(state.shake, a.boss ? 1.2 : 0.35);
-    if (a.boss) player.minerals[4] += 5;
-    else player.minerals[Math.min(4, Math.floor(a.y / 45))]++;
-  });
+  ramAliens(aliens, player, dt, alienKilled);
+
+  // The laser. One shot per press, gated by its own cooldown and by heat, so
+  // holding or mashing the button does nothing the cooldown has not allowed.
+  const shot = updateLaser(player, world, aliens, input.tapped('fire'), dt);
+  if (shot === 'hot' || shot === 'cooling') {
+    // Say why, but only once per refusal burst -- mashing should not spam text.
+    if (!state.laserNagT || state.laserNagT <= 0) {
+      floaters.push(shot === 'hot' ? 'LASER TOO HOT' : 'LASER CHARGING',
+                    player.px + 16, player.py, shot === 'hot' ? '#ff8c3a' : '#8c85a0', 0.8);
+      audio.warn();
+      state.laserNagT = 0.8;
+    }
+  } else if (shot) {
+    audio.laser();
+    state.shake = Math.max(state.shake, 0.14);
+    for (const h of shot.hits) {
+      const a = h.alien;
+      floaters.push(`-${Math.max(1, Math.round(h.dmg))}`, a.px + 16, a.py, '#ff4fd8', 0.8);
+      fx.spawn('sparks', a.px + 16, a.py + 16, 0.7);
+      if (h.killed) alienKilled(a);
+    }
+    if (shot.rock) {
+      const rx = shot.rock.x * TILE + 16, ry = shot.rock.y * TILE + 16;
+      fx.spawn(shot.broke ? 'dustpuff' : 'sparks', rx, ry, 0.8);
+      if (shot.ore >= 0) {
+        fx.pop(assets.anim.minerals.gem?.[shot.ore], rx, ry, 0.55 + shot.ore * 0.09, 22 + shot.ore * 7);
+        floaters.push(`+${Math.round((shot.ore + 1) * 10 * player.stats.cargoMult * diff.payout)}`,
+                      rx, ry - 16, ORE_TINT[shot.ore], 1 + shot.ore * 0.22);
+        audio.ore(shot.ore);
+        lastMinerals[shot.ore] = player.minerals[shot.ore];
+      }
+    }
+  }
+  state.laserNagT = Math.max(0, (state.laserNagT || 0) - dt);
 
   updateHazards(hazards, player, dt, (h) => {
     const r = applyHazard(h, player, world, fx);
@@ -954,13 +1014,16 @@ function render() {
   drawTerrain();
   drawEntities();
   drawPlayer();
+  drawBeam();
   fx.draw(ctx, cam);
   drawLight();
   drawBossGlow();
   floaters.draw(ctx, cam);
   ctx.restore();
 
-  drawHud(ctx, player, state, CW, audio.muted, STRATA, CORE_TOP + 7, diff);
+  drawHud(ctx, player, state, CW, audio.muted, STRATA, CORE_TOP + 7, diff,
+          { cd: player.laserCd || 0, max: LASER.cooldown, ready: laserReady(player),
+            hot: player.heat >= LASER.lockout });
   tips.draw(ctx, CW, CH);
 
   if (!state.over && player.ty > CORE_TOP) {
@@ -971,7 +1034,7 @@ function render() {
     // out, and the drill has no weapon to make ramming obvious.
     if (guardianAlive()) {
       const g = aliens.find((a) => a.boss);
-      hint = g && g.phase === 'exposed' ? 'THE GUARDIAN IS OPEN - RAM IT NOW'
+      hint = g && g.phase === 'exposed' ? 'THE GUARDIAN IS OPEN - RAM OR BLAST IT NOW'
            : g && g.phase === 'windup' ? 'GET CLEAR'
            : 'WAIT FOR THE GUARDIAN TO OPEN UP';
     }

@@ -60,8 +60,8 @@ const RIGHT = [
       'off and lose the drilling spent, or eat',
       'it. Worms burrow, crabs are armoured,',
       'spitters fire down clear tunnels,',
-      'lurkers wait. Driving into a thing',
-      'hurts it, and hurts you too.',
+      'lurkers wait. Ram them, or LASER them',
+      'from range: it recharges and runs hot.',
     ],
   },
   {
@@ -99,17 +99,17 @@ const RIGHT = [
 function controlsFor(coarse, pad) {
   if (pad) {
     return ['Stick / d-pad  drill (hold two for a diagonal)',
-            '(A) plant charge and install    (Y) restart',
-            '(LB) sound'];
+            '(A) plant charge and install    (B / RT) laser',
+            '(Y) restart    (LB) sound'];
   }
   if (coarse) {
     return ['D-pad  drill (press two for a diagonal)',
-            'PLANT  plant charge and install',
+            'PLANT  plant charge and install    FIRE  laser',
             'RESTART  restart    SOUND  mute'];
   }
   return ['WASD / arrows  drill (hold two for a diagonal)',
-          'E  plant charge and install    R  restart',
-          'M  sound    H  this screen'];
+          'E  plant charge and install    F  fire laser',
+          'R  restart    M  sound    H  this screen'];
 }
 
 export function createHelp() {
@@ -118,7 +118,7 @@ export function createHelp() {
     update(dt, input) {
       this.t += dt;
       // anything dismisses it
-      return input.tapped('plant') || input.tapped('restart')
+      return input.tapped('plant') || input.tapped('restart') || input.tapped('fire')
           || input.tapped('help') || input.direction() !== null;
     },
 

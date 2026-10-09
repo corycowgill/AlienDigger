@@ -98,6 +98,7 @@
     font: 700 max(10px, calc(var(--btn) * 0.22))/1 ui-monospace, monospace;
   }
   .actions button:active { background: rgba(47,210,232,0.34); }
+  .actions .fire { color: #ff4fd8; border-color: rgba(255,79,216,0.45); }
   .actions .restart { color: #e8b02b; border-color: rgba(232,176,43,0.4); }
   .actions .mute { height: calc(var(--btn) * 0.7); color: #8c85a0;
                    border-color: rgba(140,133,160,0.34); }
@@ -162,11 +163,11 @@
     <div id="help">
       <span class="key-only">
         <b>WASD</b> / <b>arrows</b> drill &nbsp;·&nbsp;
-        <b>E</b> plant charge &nbsp;·&nbsp; <b>R</b> restart &nbsp;·&nbsp; <b>H</b> help
+        <b>E</b> plant charge &nbsp;·&nbsp; <b>F</b> laser &nbsp;·&nbsp; <b>R</b> restart &nbsp;·&nbsp; <b>H</b> help
       </span>
       <span class="pad-only">
         <b>stick</b> / <b>d-pad</b> drill &nbsp;·&nbsp;
-        <b>A</b> plant charge &nbsp;·&nbsp; <b>Y</b> restart &nbsp;·&nbsp; <b>X</b> help
+        <b>A</b> plant charge &nbsp;·&nbsp; <b>B</b> laser &nbsp;·&nbsp; <b>Y</b> restart &nbsp;·&nbsp; <b>X</b> help
       </span>
     </div>
   </div>
@@ -189,6 +190,7 @@
       <button class="diag" data-dir="down right" aria-label="drill down and right">↘</button>
     </div>
     <div class="actions">
+      <button class="fire" data-tap="fire" aria-label="fire laser">FIRE</button>
       <button data-tap="plant" aria-label="plant charge">PLANT</button>
       <button class="restart" data-tap="restart" aria-label="restart">RESTART</button>
       <button class="mute" data-tap="mute" aria-label="toggle sound">SOUND</button>

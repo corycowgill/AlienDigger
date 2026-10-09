@@ -17,7 +17,8 @@ python -m http.server 8765
 # then open http://localhost:8765/
 ```
 
-**Keyboard** — `WASD` / arrow keys to drill, `E` to plant a charge, `R` to restart.
+**Keyboard** — `WASD` / arrow keys to drill, `E` to plant a charge, `F` (or `Q`)
+to fire the laser, `R` to restart.
 Hold two directions to cut a diagonal: it costs √2 as much to drill and to
 cross, so a staircase is never a cheaper way straight down, only a cheaper way
 sideways.
@@ -26,7 +27,7 @@ sideways.
 is picked up automatically: left stick or d-pad to drill, **A** to plant and to
 install upgrades, **Y** or **Start** to restart and to launch. Browsers only
 expose a pad after its first button press, so press something to wake it. A
-connected pad hides the touch controls.
+connected pad hides the touch controls. **B** or **RT** fires the laser.
 
 **Touch** — an eight-way d-pad and buttons appear automatically on touch devices.
 The corners hold two directions at once, so a diagonal takes one thumb rather
@@ -76,7 +77,7 @@ bigger haul. That trade is the decision a run is actually about; the background
 scatter is just what you pick up on the way past.
 
 Buried in the rock alongside fuel and repairs: coolant that dumps all heat, a
-shield that eats hits for a few seconds, and a bit overdrive. The Core Guardian has to be driven into -- there is no weapon -- before the
+shield that eats hits for a few seconds, and a bit overdrive. The Core Guardian has to be brought down before the
 charges will arm, and it runs a cycle worth reading: its plating shrugs off
 ramming, it opens for a window worth committing to, and it telegraphs a slam
 with a ring you want to be outside. A bar over its head shows which.
@@ -97,8 +98,23 @@ ground through, and the ice shelf is worth crossing because it actively cools.
 Eight strata get harder as you go down — topsoil, dirt, sandstone, rock, ice,
 fungal caverns, crystal, magma — and both the ore and the danger get richer with
 depth. Aliens chase when you get close; hazards hit when you share their tile.
-The drill has no gun, so ramming is the only offence: it hurts you too, which
-makes the Core Guardian something to dodge rather than fight.
+Ramming is the main offence and it hurts you too, which makes the Core
+Guardian something to dodge rather than fight.
+
+## The laser
+
+The drill carries a short laser (`F`, **B**/**RT**, or FIRE on touch) that fires
+along its heading up to seven tiles. It burns every alien in the beam -- armour
+and the Guardian's plating count exactly as they do for ramming, so the boss
+still has to be caught open -- and scorches hardness off the first rock it hits,
+breaking soft strata outright and softening the rest for the drill.
+
+It is a sidearm, not a replacement for the drill, and it cannot be spammed: one
+shot per press (holding does nothing), a 2.4s recharge, and every shot dumps 24
+heat into the bit and costs a little fuel. It refuses to fire at all once the
+bit is above 76 heat, so it trades against drilling rather than replacing it. A
+gauge under the charges reads READY, charging, or HOT, and a refused shot says
+why over the drill.
 
 ## Layout
 

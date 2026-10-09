@@ -337,7 +337,7 @@ export function updateAliens(aliens, world, player, dt, onHit, onSpit, onSlam) {
   }
 }
 
-// The drill has no gun; ramming is the whole offence. Contact hurts both sides,
+// Ramming is the main offence (the laser in laser.js is a rationed sidearm). Contact hurts both sides,
 // so small aliens clear out of the way and the boss stays something to dodge.
 export function ramAliens(aliens, player, dt, onKill) {
   for (const a of aliens) {

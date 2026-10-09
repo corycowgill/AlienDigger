@@ -57,7 +57,7 @@ function bar(ctx, x, y, w, h, frac, fill, label) {
   ctx.fillText(label, x, y - 6);
 }
 
-export function drawHud(ctx, p, state, cw, muted, strata, maxDepth, diff) {
+export function drawHud(ctx, p, state, cw, muted, strata, maxDepth, diff, laser) {
   ctx.save();
   ctx.fillStyle = 'rgba(13,10,20,0.82)';
   ctx.fillRect(0, 0, cw, 62);
@@ -120,6 +120,23 @@ export function drawHud(ctx, p, state, cw, muted, strata, maxDepth, diff) {
     ctx.fillStyle = i < p.charges ? '#39d7e8' : '#2b2438';
     ctx.fillRect(824 + i * 16, 26, 11, 12);
   }
+  // The laser's charge. It fills while cooling down and reads READY when it
+  // will fire, so mashing the button is never a guess -- and it says HOT when
+  // the bit is too warm, which is the other reason a shot can be refused.
+  if (laser) {
+    const frac = laser.max > 0 ? 1 - laser.cd / laser.max : 1;
+    ctx.fillStyle = '#0c0a12';
+    ctx.fillRect(824, 42, 43, 6);
+    ctx.fillStyle = laser.hot ? '#ff8c3a' : laser.ready ? '#ff4fd8' : '#7a2a6a';
+    ctx.fillRect(824, 42, Math.round(43 * Math.max(0, Math.min(1, frac))), 6);
+    ctx.strokeStyle = laser.ready ? '#ff4fd8' : '#2b2438';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(823.5, 41.5, 44, 7);
+    ctx.fillStyle = laser.hot ? '#ff8c3a' : laser.ready ? '#ff4fd8' : DIM;
+    ctx.font = '9px ui-monospace, monospace';
+    ctx.fillText(laser.hot ? 'LASER HOT' : laser.ready ? 'LASER' : 'LASER ..', 824, 58);
+  }
+
   // Timed effects need a countdown or they are invisible: a shield that silently
   // eats a hit reads as the hit having missed.
   const buffs = [];

@@ -5,7 +5,7 @@ import { loadAssets } from './assets.js';
 import { createInput } from './input.js';
 import { TILE, W, D, CORE_TOP, EMPTY, STRATA, World, rng, strataAt } from './world.js';
 import { createPlayer, updatePlayer, damage, cargoUsed, cargoRoom, stowOre, dumpOre } from './player.js';
-import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup, collectOre, runTremor, TREMOR, COIL_TIME, lavaLevel, lavaBurn, LAVA, leechSteal, dropLoot, splitBrood, hazardArmed, DEATH_OF, staggerOf, SCORCH_FOR } from './entities.js';
+import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup, collectOre, runTremor, TREMOR, COIL_TIME, lavaLevel, lavaBurn, LAVA, leechSteal, dropLoot, splitBrood, hazardArmed, DEATH_OF, staggerOf, SCORCH_FOR, guardRage, guardReach, guardPhaseTime } from './entities.js';
 import { updateLaser, laserReady, LASER } from './laser.js';
 import { createFx } from './fx.js';
 import { createFloaters } from './floaters.js';
@@ -663,11 +663,22 @@ function drawEntities() {
     if (a.boss && a.hp > 0) {
       const cx = a.px + TILE / 2 - cam.x, cy = a.py + TILE / 2 - cam.y;
       if (a.phase === 'windup') {
-        const grow = 1 - a.phaseT / 0.75;
-        ctx.strokeStyle = `rgba(255,70,50,${0.35 + grow * 0.5})`;
-        ctx.lineWidth = 3;
+        // The ring is a promise about where the slam will land, so it has to
+        // grow with the reach. A hurt Guardian swings three tiles instead of
+        // two, and a ring that kept drawing the old radius would be telling
+        // the player they were clear when they were not.
+        const rage = guardRage(a);
+        const reach = guardReach(rage);
+        const span = TILE * (reach + 0.5);
+        // Against the windup's *current* length, not the constant -- the wind
+        // up shortens as it rages, and a ring timed to the old duration would
+        // still be opening when the slam already landed.
+        const wind = Math.max(0.01, guardPhaseTime('windup', rage));
+        const k = 1 - Math.max(0, a.phaseT) / wind;
+        ctx.strokeStyle = `rgba(255,70,50,${0.35 + k * 0.5})`;
+        ctx.lineWidth = reach > 2 ? 4 : 3;
         ctx.beginPath();
-        ctx.arc(cx, cy, TILE * 2.5 * (0.55 + grow * 0.45), 0, Math.PI * 2);
+        ctx.arc(cx, cy, span * (0.55 + k * 0.45), 0, Math.PI * 2);
         ctx.stroke();
       } else if (a.phase === 'exposed') {
         ctx.fillStyle = `rgba(47,210,232,${0.10 + Math.sin(state.time * 9) * 0.06})`;
@@ -1141,9 +1152,9 @@ function update(dt) {
     // It just opened itself up to fire at you. Say so the first time, while the
     // window is actually open.
     if (tips.show('vent')) store(save);
-  }, (a, reach) => {
+  }, (a, reach, radius) => {
     // the slam lands wherever you are standing when the windup ends
-    fx.spawn('explosion', a.px + 16, a.py + 16, 1.6);
+    fx.spawn('explosion', a.px + 16, a.py + 16, 1.4 + (radius || 2) * 0.2);
     state.shake = Math.max(state.shake, reach ? 1.1 : 0.5);
     audio.explode();
     if (reach && damage(player, a.kind.slam, fx)) {

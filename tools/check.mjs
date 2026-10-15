@@ -11,7 +11,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { W, D, CORE_TOP, EMPTY, STRATA, World, rng, strataAt } from '../src/world.js';
 import { populate, collectOre, hitScale, updateAliens, ALIEN_KINDS, HAZARD_KINDS, PICKUPS,
-         VENT_TIME, VENT_BONUS, COIL_TIME, lavaLevel, lavaBurn, LAVA, DEATH_OF, staggerOf } from '../src/entities.js';
+         VENT_TIME, VENT_BONUS, COIL_TIME, lavaLevel, lavaBurn, LAVA, DEATH_OF, staggerOf, guardRage, guardReach, guardPhaseTime, GUARD_PHASE } from '../src/entities.js';
 import { createPlayer, cargoUsed, cargoRoom, stowOre, dumpOre } from '../src/player.js';
 import { statsFor, difficultyFor, UPGRADES } from '../src/progress.js';
 
@@ -241,6 +241,39 @@ console.log('\nlava');
   const tight = difficultyFor(999).escape;
   check('it still reaches the surface on the hardest planet',
         lavaLevel(0, tight) <= 3, `${tight}s window`);
+}
+
+// --------------------------------------------------------------- guardian
+// The climax has to get harder as it loses, not easier, and the ring it draws
+// has to keep telling the truth about where the slam lands.
+console.log('\nguardian');
+{
+  const boss = (hp) => ({ hp, maxHp: 26 });
+  check('rage runs 0 to 1 across its health',
+        guardRage(boss(26)) === 0 && guardRage(boss(0)) === 1
+        && Math.abs(guardRage(boss(13)) - 0.5) < 1e-9);
+  check('rage is clamped past death', guardRage(boss(-20)) === 1);
+
+  for (const phase of ['armored', 'exposed', 'windup']) {
+    const fresh = guardPhaseTime(phase, 0), dying = guardPhaseTime(phase, 1);
+    check(`${phase} shortens as it loses`, dying < fresh,
+          `${fresh.toFixed(2)}s -> ${dying.toFixed(2)}s`);
+    check(`${phase} never reaches zero`, dying > 0.1, `${dying.toFixed(2)}s`);
+  }
+  check('a fresh Guardian matches the tuned cycle',
+        guardPhaseTime('armored', 0) === GUARD_PHASE.armored
+        && guardPhaseTime('exposed', 0) === GUARD_PHASE.exposed);
+
+  // The open window must stay long enough to be worth committing to, or the
+  // fight stops having an answer at all.
+  check('the open window is always worth committing to',
+        guardPhaseTime('exposed', 1) >= 1.2, `${guardPhaseTime('exposed', 1).toFixed(2)}s`);
+  // ...and the warning must stay readable.
+  check('the slam is still telegraphed when cornered',
+        guardPhaseTime('windup', 1) >= 0.4, `${guardPhaseTime('windup', 1).toFixed(2)}s`);
+
+  check('reach widens only once it is hurt',
+        guardReach(0) === 2 && guardReach(1) === 3);
 }
 
 // ----------------------------------------------------------------- combat

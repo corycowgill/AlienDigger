@@ -320,15 +320,41 @@ export const COIL_TIME = 0.45;
 export const GUARD_PHASE = { armored: 1.8, exposed: 2.8, windup: 0.75, slam: 0.25 };
 const GUARD_ORDER = ['armored', 'exposed', 'windup', 'slam'];
 
+// How far through its health the Guardian is, 0 at full and 1 at dead.
+export function guardRage(a) {
+  return a.maxHp ? Math.max(0, Math.min(1, 1 - Math.max(0, a.hp) / a.maxHp)) : 0;
+}
+
+// The fight used to run the same cycle on the same timer at 26 hit points and
+// at 1, so the climax of a run got *easier* the longer it went on: you learned
+// the rhythm in the first ten seconds and then repeated it. It now closes up as
+// it loses. The window you are waiting for gets shorter, the warning before a
+// slam gets shorter, and the slam reaches further -- so the opening teaches the
+// pattern and the ending demands you already know it.
+export function guardPhaseTime(phase, rage) {
+  const k = Math.max(0, Math.min(1, rage));
+  if (phase === 'armored') return GUARD_PHASE.armored - k * 0.6;
+  if (phase === 'exposed') return GUARD_PHASE.exposed - k * 1.2;
+  if (phase === 'windup') return GUARD_PHASE.windup - k * 0.28;
+  return GUARD_PHASE.slam;
+}
+
+// A cornered Guardian swings wider. Stepping one tile clear stops being enough.
+export function guardReach(rage) {
+  return rage > 0.55 ? 3 : 2;
+}
+
 function updateGuardian(a, player, dt, onSlam) {
   a.phaseT -= dt;
   if (a.phaseT <= 0) {
     const next = GUARD_ORDER[(GUARD_ORDER.indexOf(a.phase) + 1) % GUARD_ORDER.length];
+    const rage = guardRage(a);
     a.phase = next;
-    a.phaseT = GUARD_PHASE[next];
+    a.phaseT = guardPhaseTime(next, rage);
     if (next === 'slam') {
-      const reach = Math.abs(a.x - player.tx) <= 2 && Math.abs(a.y - player.ty) <= 2;
-      onSlam?.(a, reach);
+      const r = guardReach(rage);
+      const reach = Math.abs(a.x - player.tx) <= r && Math.abs(a.y - player.ty) <= r;
+      onSlam?.(a, reach, r);
     }
   }
 }

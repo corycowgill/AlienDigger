@@ -193,6 +193,17 @@ distinctions the player's decisions did not.
   phase rather than a direction -- no approach angle beats it, so it still has
   to be caught open.
 
+The Guardian also closes up as it loses. It used to run the same cycle on the
+same timer at full health and at one hit point, so the climax of a run got
+*easier* the longer it went on: you learned the rhythm in the first ten seconds
+and then repeated it. Now the open window shortens from 2.8s to 1.6s, the
+warning before a slam shortens from 0.75s to 0.47s, and a cornered Guardian
+swings three tiles instead of two -- with the telegraph ring growing to match,
+because a ring still drawing the old radius would be telling the player they
+were clear when they were not. The opening teaches the pattern; the ending
+demands you already know it. Measured over 60 runs it did not move the win rate,
+but deaths in the chamber went from almost none to four.
+
 Five more kinds joined them, each for an answer the first five did not have. An
 **ore leech** robs the cargo bay rather than the hull -- the only enemy whose
 damage is counted in credits -- and carries what it took until something kills

@@ -376,9 +376,18 @@ run
 await (await fetch('tools/statesheet.js')).text().then(eval)
 ```
 
-and it drives the game through all 26 of its visual states -- every heading, a
-damaged rig, each stratum, each boss phase, the wreck, the banner, the Foundry,
-the help -- and lays them out as one contact sheet. `check.mjs` verifies the
+and it drives the game through all 37 of its visual states -- every heading, a
+damaged rig, each stratum, each boss phase, the bit's heat stages, a full cargo
+bay with ore lying where it was left, the second wave of creatures and hazards,
+the combat tells, every material death, the rising flood, the wreck, the banner,
+the Foundry, the help -- and lays them out as one contact sheet.
+
+Worth knowing what it is for: a contact sheet tile is 0.4x scale, which is the
+right size for catching a state that is broken, blank or composed wrong, and the
+wrong size for judging a sprite. Judge sprites at full resolution. Updating this
+tool immediately found a state leak in it -- the escape flag survived the flood
+captures, so the wreck and the banner were being photographed from under forty
+feet of lava. `check.mjs` verifies the
 rules; it cannot see a sprite pointing the wrong way, a banner covering the
 explosion it announces, or an effect frozen mid-animation. All three of those
 have shipped here, and all three were caught by looking rather than by a check

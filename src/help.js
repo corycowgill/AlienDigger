@@ -10,6 +10,10 @@ const TRIM = '#2fd2e8';
 const GOLD = '#e8b02b';
 const WARN = '#ff6b5b';
 
+// Two columns of roughly 378px each, between the title and the TO WIN panel.
+// A section costs 27px plus 13 per line, so adding one means trimming elsewhere
+// -- the right column was already three pixels into the panel before the cargo
+// bay needed a home.
 const LEFT = [
   {
     head: 'THE JOB', color: TRIM,
@@ -17,7 +21,6 @@ const LEFT = [
       'Drill down to the planetary core,',
       'plant three fusion charges, then',
       'climb back out before they blow.',
-      'You keep whatever you dug.',
     ],
   },
   {
@@ -25,18 +28,16 @@ const LEFT = [
     lines: [
       'Drilling burns fuel fast; coasting',
       'burns it slowly. A full tank is about',
-      'a third of the way down, so you must',
-      'refuel en route. On empty the rig',
-      'burns HULL and the drill crawls.',
+      'a third of the way down, so refuel en',
+      'route. On empty the rig burns HULL.',
     ],
   },
   {
     head: 'HEAT IS THE PACE', color: '#ff8c3a',
     lines: [
-      'Deep rock heats the bit. Redline it',
-      'and it eats your hull. Stop cutting',
-      'and it sheds fast, so pace rather than',
-      'push. The ice shelf actively cools.',
+      'Deep rock heats the bit; redline it and',
+      'it eats hull. Stop cutting and it sheds',
+      'fast, so pace. The ice shelf cools.',
     ],
   },
   {
@@ -44,9 +45,17 @@ const LEFT = [
     lines: [
       'Each stratum is harder and hotter.',
       'Buried in the rock: fuel, repairs,',
-      'coolant that dumps heat, a shield, and',
-      'a bit overdrive. Your scanner finds',
-      'the ones worth a detour.',
+      'coolant, a shield, a bit overdrive.',
+      'Your scanner finds the ones worth it.',
+    ],
+  },
+  {
+    head: 'THE BAY IS FINITE', color: '#c19a5b',
+    lines: [
+      'Each ore takes one slot whatever its',
+      'tier. DUMP sheds the cheapest behind',
+      'you, so a full bay swaps in one press.',
+      'Ore you leave lies there for the climb.',
     ],
   },
 ];
@@ -57,11 +66,12 @@ const RIGHT = [
     lines: [
       'Hazards are sealed in the rock. A tile',
       'FLASHES RED before you break in - back',
-      'off and lose the drilling spent, or eat',
-      'it. Worms burrow, crabs are armoured,',
-      'spitters fire down clear tunnels,',
-      'lurkers wait. Ram them, or LASER them',
-      'from range: it recharges and runs hot.',
+      'off, or eat it. Each alien has its own',
+      "answer: a crab's shell only covers the",
+      'way it FACES, so take its flank; a',
+      'spitter is OPEN just after it fires; a',
+      'lurker COILS before it bolts; worms',
+      'come through walls. Ram, or LASER.',
     ],
   },
   {
@@ -81,8 +91,8 @@ const RIGHT = [
       'off ramming, OPEN is your window, and',
       'SLAM INCOMING means clear the ring.',
       'Once armed, tremors drop rubble into',
-      'the shaft above. It cuts easily, but',
-      'the clock is running.',
+      'the shaft above - including over ore',
+      'you left. It cuts easily; the clock runs.',
     ],
   },
   {
@@ -90,8 +100,7 @@ const RIGHT = [
     lines: [
       'Minerals bank as credits: all of them',
       'if the planet cracks, 40% if you die.',
-      'Spend between runs. Each planet you',
-      'crack makes the next one harder.',
+      'Each crack makes the next one harder.',
     ],
   },
 ];
@@ -100,15 +109,17 @@ function controlsFor(coarse, pad) {
   if (pad) {
     return ['Stick / d-pad  drill (hold two for a diagonal)',
             '(A) plant charge and install    (B / RT) laser',
-            '(Y) restart    (LB) sound'];
+            '(RB) dump cheapest ore    (Y) restart    (LB) sound'];
   }
   if (coarse) {
     return ['D-pad  drill (press two for a diagonal)',
             'PLANT  plant charge and install    FIRE  laser',
-            'RESTART  restart    SOUND  mute'];
+            'DUMP  dump cheapest ore    RESTART    SOUND'];
   }
+  // Three lines in every scheme: the block is drawn at a fixed offset from the
+  // bottom and a fourth line runs into the "press any key" prompt.
   return ['WASD / arrows  drill (hold two for a diagonal)',
-          'E  plant charge and install    F  fire laser',
+          'E  plant and install    F  laser    G  dump ore',
           'R  restart    M  sound    H  this screen'];
 }
 

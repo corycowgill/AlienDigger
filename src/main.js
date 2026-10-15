@@ -4,8 +4,8 @@
 import { loadAssets } from './assets.js';
 import { createInput } from './input.js';
 import { TILE, W, D, CORE_TOP, EMPTY, STRATA, World, rng, strataAt } from './world.js';
-import { createPlayer, updatePlayer, damage } from './player.js';
-import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup } from './entities.js';
+import { createPlayer, updatePlayer, damage, cargoUsed, cargoRoom, stowOre, dumpOre } from './player.js';
+import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup, collectOre, runTremor, TREMOR, COIL_TIME, lavaLevel, lavaBurn, LAVA, leechSteal, dropLoot, splitBrood, hazardArmed } from './entities.js';
 import { updateLaser, laserReady, LASER } from './laser.js';
 import { createFx } from './fx.js';
 import { createFloaters } from './floaters.js';
@@ -65,6 +65,7 @@ const input = createInput();
 const fx = createFx(assets);
 const floaters = createFloaters();
 const ORE_TINT = ['#e07a2b', '#d8dbe6', '#a77ff0', '#e8b02b', '#39d7e8'];
+const ORE_NAMES = ['Cu', 'Ir', 'Vd', 'Am', 'Pc'];
 const lastMinerals = [0, 0, 0, 0, 0];
 const audio = createAudio();
 
@@ -79,6 +80,14 @@ let lastRun = null;
 // 'title' until the viewer starts, then 'playing'. ?dev skips straight in so
 // the test hooks do not have to clear the screen first.
 let screen = new URLSearchParams(location.search).has('dev') ? 'playing' : 'title';
+// ?dev skips the title, and the title is where the audio context is woken from
+// its first gesture -- so a dev session was silent for its whole life, which is
+// a poor way to work on sound.
+if (screen === 'playing') {
+  const wake = () => audio.resume();
+  addEventListener('pointerdown', wake, { once: true });
+  addEventListener('keydown', wake, { once: true });
+}
 
 let world, player, aliens, hazards, pickups, props, state, cam, hazardAt, diff;
 // Terrain cache state. Declared up here because reset() runs at module load and
@@ -111,23 +120,57 @@ reset();
 
 // ---------------------------------------------------------------- rendering
 
-function bgFor(depth) {
+// Depths at which the parallax strip changes. The change used to be a hard cut
+// on a single frame, which is the one moment the background ever drew attention
+// to itself, so the strips now cross-fade over the tiles either side.
+const BG_BANDS = [24, 110, 172];
+const BG_FADE = 14;        // tiles of overlap between two strips
+
+function bgLayers(depth) {
   const list = assets.backgrounds;
-  if (depth < 24) return assets.bg[list[0]];     // through dirt
-  if (depth < 110) return assets.bg[list[1]];    // through rock
-  if (depth < 172) return assets.bg[list[2]];    // ice, fungal, crystal
-  return assets.bg[list[3]];
+  let i = 0;
+  while (i < BG_BANDS.length && depth >= BG_BANDS[i]) i++;
+  const next = BG_BANDS[i];
+  if (next !== undefined && depth > next - BG_FADE) {
+    return {
+      a: assets.bg[list[i]],
+      b: assets.bg[list[i + 1]],
+      t: (depth - (next - BG_FADE)) / BG_FADE,
+    };
+  }
+  return { a: assets.bg[list[i]], b: null, t: 0 };
+}
+
+// The strip is drawn taller than the viewport and panned down across the whole
+// descent, so the background slides against the terrain instead of sitting dead
+// still. It is a straight map from depth rather than a wrapped offset: a wrap
+// would snap back to the top at the seam, which is exactly the artefact
+// parallax is supposed to hide.
+function drawStrip(img, alpha) {
+  if (!img) return;
+  const vh = CH - VIEW_TOP;
+  const scale = (vh * 1.3) / img.height;
+  const w = img.width * scale, h = img.height * scale;
+  const drift = Math.max(0, h - vh);
+  const y = VIEW_TOP - drift * Math.max(0, Math.min(1, player.ty / D));
+  const offset = -((cam.x * 0.35) % w);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  for (let x = offset - w; x < CW; x += w) {
+    ctx.drawImage(img, Math.round(x), Math.round(y), Math.ceil(w), Math.ceil(h));
+  }
+  ctx.restore();
 }
 
 function drawBackground() {
-  const img = bgFor(player.ty);
-  if (!img) return;
-  const scale = (CH - VIEW_TOP) / img.height;
-  const w = img.width * scale;
-  const offset = -((cam.x * 0.35) % w);
-  for (let x = offset - w; x < CW; x += w) {
-    ctx.drawImage(img, Math.round(x), VIEW_TOP, Math.ceil(w), CH - VIEW_TOP);
-  }
+  const { a, b, t } = bgLayers(player.ty);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, VIEW_TOP, CW, CH - VIEW_TOP);
+  ctx.clip();
+  drawStrip(a, 1);
+  if (b && t > 0) drawStrip(b, Math.min(1, t));
+  ctx.restore();
   ctx.fillStyle = 'rgba(13,10,20,0.45)';
   ctx.fillRect(0, VIEW_TOP, CW, CH - VIEW_TOP);
 }
@@ -175,6 +218,40 @@ tctx.imageSmoothingEnabled = false;
 // Depth of the shadow cast into open space by the rock around it.
 const EDGE = 7;
 
+// ------------------------------------------------------------------ scenery
+// One decoration row per stratum, so a cavern looks like the ground it was cut
+// out of: roots near the surface, fossils in sandstone, abandoned kit in the
+// rock, stalactites in the ice, fungus in the fungal caverns, shards and
+// obelisks in the crystal, scorched vents in the magma.
+//
+// This is render-only. It is painted into the terrain cache and never consulted
+// by collision, movement or spawning -- decoration that could block a shaft
+// would be a hazard wearing scenery's clothes.
+const DECOR = [
+  { row: 'roots' },
+  { row: 'scrap' },
+  { row: 'fossil' },
+  { row: 'mining' },
+  { row: 'stalactite', hang: true },
+  { row: 'mushroom', alt: 'spore' },
+  { row: 'crystalform', alt: 'obelisk' },
+  { row: 'ventrock' },
+];
+// Percent of open tiles that roll for scenery. Most of them then fail the
+// anchor test -- caves are blobby and only their floors and walls touch rock --
+// so the number that actually land is far lower: measured at 69 pieces a world,
+// about 13% of open tiles. At the first value of 11 it was 11 pieces in a whole
+// planet, which is not decoration, it is a rumour of decoration.
+const DECOR_PCT = 38;
+
+// Deterministic per tile, so nothing has to be stored and a dirty repaint of a
+// single tile reproduces exactly what was there before.
+function decorHash(x, y) {
+  let h = (x * 374761393 + y * 668265263) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
 function paintTiles(ox, oy, x0, y0, x1, y1) {
   for (let ty = y0; ty < y1; ty++) {
     const y = oy + ty;
@@ -195,6 +272,49 @@ function paintTiles(ox, oy, x0, y0, x1, y1) {
         if (world.solid(x, y + 1)) shadeEdge(sx, sy + TILE - EDGE, TILE, EDGE, 0, -1);
         if (world.solid(x - 1, y)) shadeEdge(sx, sy, EDGE, TILE, 1, 0);
         if (world.solid(x + 1, y)) shadeEdge(sx + TILE - EDGE, sy, EDGE, TILE, -1, 0);
+
+        // Ore lying on open ground: what a full bay could not take, or what was
+        // dumped on purpose. Drawn from the refined-gem row rather than the
+        // ore-in-rock row, so a pile you can drive over never looks like a vein
+        // you still have to cut -- and it rides the terrain cache, so a stash
+        // left at 170m costs nothing to keep on screen for the climb back.
+        // Scenery goes down first so loose ore, drawn below, sits on top of it
+        // -- a stash must never end up hidden behind a mushroom.
+        const h = decorHash(x, y);
+        if (h % 100 < DECOR_PCT && world.ore[i] < 0) {
+          const set = DECOR[strataAt(y).row];
+          // Anchored to real rock, so nothing floats in mid-cave: stalactites
+          // want a ceiling, everything else a floor -- or failing that a side
+          // wall to stand against, which is what most cave tiles actually touch
+          // and without which the scenery only ever lined cave floors.
+          const anchored = set && (set.hang
+            ? world.solid(x, y - 1)
+            : world.solid(x, y + 1) || world.solid(x - 1, y) || world.solid(x + 1, y));
+          if (anchored) {
+            const frames = assets.anim.decor?.[set.alt && (h & 8) ? set.alt : set.row];
+            const img = frames && frames[(h >>> 8) % frames.length];
+            if (img) {
+              const k = Math.min(TILE / img.width, TILE / img.height);
+              const dw = Math.round(img.width * k), dh = Math.round(img.height * k);
+              tctx.drawImage(img, sx + ((TILE - dw) >> 1),
+                             set.hang ? sy : sy + TILE - dh, dw, dh);
+            }
+          }
+        }
+
+        const loose = world.ore[i];
+        if (loose >= 0) {
+          const gem = assets.anim.minerals.gem?.[loose];
+          if (gem) tctx.drawImage(gem, sx + 7, sy + 7, TILE - 14, TILE - 14);
+          const n = world.oreCount[i];
+          if (n > 1) {
+            tctx.font = 'bold 9px ui-monospace, monospace';
+            tctx.fillStyle = 'rgba(8,5,16,0.85)';
+            tctx.fillText(`x${n}`, sx + TILE - 17, sy + TILE - 3);
+            tctx.fillStyle = ORE_TINT[loose];
+            tctx.fillText(`x${n}`, sx + TILE - 18, sy + TILE - 4);
+          }
+        }
         continue;
       }
 
@@ -332,6 +452,84 @@ function drawLight() {
   if (y0 + light.height < CH) ctx.fillRect(Math.max(0, x0), y0 + light.height, Math.min(CW, light.width), CH - (y0 + light.height));
 }
 
+// The planet closing in. Built once into an offscreen canvas and blitted with a
+// varying alpha, rather than allocating a radial gradient every frame -- the
+// same reason the depth light is cached.
+const vignette = document.createElement('canvas');
+{
+  const vh = CH - VIEW_TOP;
+  vignette.width = CW;
+  vignette.height = vh;
+  const vc = vignette.getContext('2d');
+  const g = vc.createRadialGradient(CW / 2, vh / 2, Math.min(CW, vh) * 0.28,
+                                    CW / 2, vh / 2, Math.max(CW, vh) * 0.72);
+  g.addColorStop(0, 'rgba(120,10,4,0)');
+  g.addColorStop(0.55, 'rgba(120,10,4,0.30)');
+  g.addColorStop(1, 'rgba(150,20,6,0.85)');
+  vc.fillStyle = g;
+  vc.fillRect(0, 0, CW, vh);
+}
+
+// The flood itself. The body is painted rather than tiled from art: a sprite
+// stretched across the full width would have to tile seamlessly at every zoom,
+// and a flat fill of the sheet's own colours is both exact and free. The art
+// does the part art is good at -- the churning crest along the top, the crust
+// riding on it, and the bubbles.
+function drawLava() {
+  const level = state.lava;
+  if (!state.escaping || level == null || level > D + 1) return;
+  const top = Math.round(level * TILE - cam.y);
+  if (top > CH) return;                       // still below the view
+  const lo = Math.max(VIEW_TOP, top);
+
+  // Body: flat bands, hot at the surface and falling away fast to near-black.
+  // Two bands was not enough -- it put a slab of bright orange across the whole
+  // lower screen, which read as a wall of paint rather than as depth, and it
+  // out-shouted the drill. The heat belongs at the waterline, which is the only
+  // part the player is actually judging.
+  ctx.fillStyle = '#e0541f';
+  ctx.fillRect(0, lo, CW, CH - lo);
+  ctx.fillStyle = '#9c2410';
+  ctx.fillRect(0, Math.min(CH, lo + TILE * 1.2), CW, CH);
+  ctx.fillStyle = '#5c1408';
+  ctx.fillRect(0, Math.min(CH, lo + TILE * 2.6), CW, CH);
+  ctx.fillStyle = '#2e0a04';
+  ctx.fillRect(0, Math.min(CH, lo + TILE * 4.5), CW, CH);
+
+  // Crest and crust along the surface, picked per column so the line churns
+  // instead of repeating one tile across the screen.
+  const crest = assets.anim.lava?.crest;
+  const crust = assets.anim.lava?.crust;
+  if (crest && crest.length && top > VIEW_TOP - TILE) {
+    const x0 = Math.floor(cam.x / TILE) - 1;
+    for (let i = 0; i <= Math.ceil(CW / TILE) + 1; i++) {
+      const tx = x0 + i;
+      const sx = Math.round(tx * TILE - cam.x);
+      const h = decorHash(tx, Math.floor(level));
+      const img = (h & 4) && crust && crust.length
+        ? crust[(h >>> 5) % crust.length]
+        : crest[(h >>> 3) % crest.length];
+      if (img) ctx.drawImage(img, sx, top - TILE, TILE, TILE);
+    }
+  }
+
+  // A hot rim right on the waterline, so the edge reads even in the dark.
+  ctx.fillStyle = '#ffd089';
+  ctx.fillRect(0, top - 1, CW, 2);
+}
+
+// Drawn over the darkness and under the HUD. The escape had a number counting
+// down and a beep; the shaft itself looked exactly like the descent did, which
+// is a strange way to render a planet coming apart.
+function drawCollapse() {
+  const panic = state.panic || 0;
+  if (!state.escaping || panic <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = Math.min(0.75, panic * panic * 0.85);
+  ctx.drawImage(vignette, 0, VIEW_TOP);
+  ctx.restore();
+}
+
 // Short cycles ping-pong rather than wrapping. A three-frame walk played
 // 0,1,2,0,1,2 snaps hard on the wrap, which is most of why these read as choppy;
 // 0,1,2,1 turns the same three frames into a smooth there-and-back. Two-frame
@@ -374,12 +572,23 @@ function frameOf(frames, t, fps = 8) {
   return frames[i < n ? i : span - i];
 }
 
-function drawSprite(img, px, py, box) {
+function drawSprite(img, px, py, box, flip = false) {
   if (!img) return;
   const scale = box / Math.max(img.width, img.height);
   const w = img.width * scale, h = img.height * scale;
-  ctx.drawImage(img, Math.round(px - cam.x + (TILE - w) / 2),
-                     Math.round(py - cam.y + (TILE - h)), Math.round(w), Math.round(h));
+  const x = Math.round(px - cam.x + (TILE - w) / 2);
+  const y = Math.round(py - cam.y + (TILE - h));
+  if (!flip) {
+    ctx.drawImage(img, x, y, Math.round(w), Math.round(h));
+    return;
+  }
+  // Mirrored about the sprite's own centre, so flipping does not shift it off
+  // its tile. The sheets are all drawn facing right, same as the drill's.
+  ctx.save();
+  ctx.translate(x + Math.round(w) / 2, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(img, -Math.round(w) / 2, y, Math.round(w), Math.round(h));
+  ctx.restore();
 }
 
 function drawEntities() {
@@ -395,8 +604,19 @@ function drawEntities() {
   for (const h of hazards) {
     if (Math.abs(h.y - player.ty) > 22) continue;
     if (world.solid(h.x, h.y)) continue;      // still buried
-    drawSprite(frameOf(assets.anim.hazards[h.kind.row], h.t, 9),
-               h.x * TILE, h.y * TILE, TILE);
+    // A geyser spends most of its cycle inert, and its three frames are the
+    // tell: wisp, building, firing. Playing them on the hazard's own clock
+    // means the sprite and the damage window are the same thing, so a player
+    // can read when it is safe to cross instead of guessing.
+    const frames = assets.anim.hazards[h.kind.row];
+    let img;
+    if (h.kind.duty && frames && frames.length >= 3) {
+      const phase = (h.t % h.kind.duty) / h.kind.duty;
+      img = frames[phase > 0.62 ? 2 : phase > 0.45 ? 1 : 0];
+    } else {
+      img = frameOf(frames, h.t, 9);
+    }
+    drawSprite(img, h.x * TILE, h.y * TILE, TILE);
   }
   for (const u of pickups) {
     if (u.taken || Math.abs(u.y - player.ty) > 22) continue;
@@ -457,10 +677,60 @@ function drawEntities() {
       }
     }
 
+    // A coiled lurker: the ring closes in rather than opening out, which reads
+    // as something gathering itself instead of something detonating, and it is
+    // the only warning the hardest-hitting alien in the game gives.
+    if (a.coil > 0) {
+      const k = a.coil / COIL_TIME;
+      const cx = a.px + TILE / 2 - cam.x, cy = a.py + TILE / 2 - cam.y;
+      ctx.strokeStyle = `rgba(255,80,60,${(0.8 - k * 0.35).toFixed(3)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, TILE * (0.7 + k * 1.7), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // A venting spitter is lit from inside: it just fired, it cannot cover
+    // itself, and this is the window worth crossing the tunnel for.
+    if (a.vent > 0) {
+      const cx = a.px + TILE / 2 - cam.x, cy = a.py + TILE / 2 - cam.y;
+      const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, TILE * 1.3);
+      grd.addColorStop(0, 'rgba(127,224,74,0.42)');
+      grd.addColorStop(1, 'rgba(127,224,74,0)');
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = grd;
+      ctx.fillRect(cx - TILE * 1.3, cy - TILE * 1.3, TILE * 2.6, TILE * 2.6);
+      ctx.restore();
+    }
+
     if (inRock) ctx.globalAlpha = 0.45;
     else if (dormant) ctx.globalAlpha = 0.7;
-    drawSprite(img, a.px, a.py, a.boss ? TILE * 3 : TILE * 1.3);
+    // Aliens are mirrored to face the way they are moving. They never were, so
+    // a crab marching left was drawn marching right -- which did not matter
+    // until its shell became the side it is pointing.
+    drawSprite(img, a.px, a.py, a.boss ? TILE * 3 : TILE * 1.3,
+               !a.boss && a.face && a.face[0] < 0);
     ctx.globalAlpha = 1;
+
+    // The shell, drawn as a plate on the side it actually covers. Without this
+    // the armour rule is invisible and the player just sees a crab that
+    // sometimes takes double damage for no reason they can name.
+    if (a.kind.armor && a.face && (a.face[0] || a.face[1]) && !inRock) {
+      const cx = a.px + TILE / 2 - cam.x;
+      // Centred on the sprite, not the tile. drawSprite anchors a 1.3-tile box
+      // to the bottom of the tile, so the body sits about a third of a tile
+      // above the tile centre and a plate drawn on the centre floats off it.
+      const cy = a.py + TILE * 0.35 - cam.y;
+      const ang = Math.atan2(a.face[1], a.face[0]);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(205,218,236,0.9)';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, TILE * 0.62, ang - 0.9, ang + 0.9);
+      ctx.stroke();
+      ctx.restore();
+    }
 
     // A flinch on every landed hit. Anything you can damage should show it,
     // but it matters most on the boss, where without it you cannot tell a
@@ -627,8 +897,28 @@ function alienKilled(a) {
   fx.spawn(a.boss ? 'explosion' : 'debris', a.px + 16, a.py + 16, a.boss ? 2 : 1);
   a.boss ? audio.explode() : audio.kill();
   state.shake = Math.max(state.shake, a.boss ? 1.2 : 0.35);
-  if (a.boss) player.minerals[4] += 5;
-  else player.minerals[Math.min(4, Math.floor(a.y / 45))]++;
+  // The bounty goes through the bay like everything else, so a kill cannot
+  // smuggle ore past a full hold. It lands at the drill's feet rather than in
+  // the alien's tile, which is always open ground -- a burrowed worm dies
+  // inside rock, and ore dropped in there would be unrecoverable.
+  // Anything it stole falls where it died, so a leech is a theft you can undo
+  // rather than a loss you absorb -- which is what makes turning to fight one
+  // a decision instead of a chore.
+  const recovered = dropLoot(a, world);
+  if (recovered > 0) {
+    floaters.push(`+${recovered} RECOVERED`, a.px + 16, a.py, '#a77ff0');
+  }
+  // A broodsac is a delayed swarm. Killing it at range is the whole point.
+  if (a.kind.splits) {
+    const young = splitBrood(a, world);
+    for (const y of young) aliens.push(y);
+    if (young.length) {
+      fx.spawn('acidsplash', a.px + 16, a.py + 16, 1.2);
+      state.shake = Math.max(state.shake, 0.4);
+    }
+  }
+  const tier = a.boss ? 4 : Math.min(4, Math.floor(a.y / 45));
+  stowOre(player, world, tier, a.boss ? 5 : 1, player.tx, player.ty);
   // keep the ore-pop logic from mistaking the bounty for something dug
   for (let i = 0; i < player.minerals.length; i++) lastMinerals[i] = player.minerals[i];
 }
@@ -639,6 +929,11 @@ function update(dt) {
   input.poll();
 
   if (input.tapped('mute')) audio.toggleMute();
+  // The score runs on every screen, not just during a run, so it is ticked
+  // before the screen guards below return. It schedules against the audio
+  // clock, so this only ever tops up a queue.
+  audio.tick(dt);
+  audio.musicCalm(screen !== 'playing');
 
   if (screen === 'help') {
     if (help.update(dt, input)) screen = helpReturn;
@@ -688,15 +983,21 @@ function update(dt) {
   if (input.tapped('restart')) { reset(); return; }
 
   state.time += dt;
-  const oreBefore = player.minerals.reduce((a, c) => a + c, 0);
+  const oreBefore = cargoUsed(player);
   updatePlayer(player, world, input, dt, playerFx);
-  if (player.minerals.reduce((a, c) => a + c, 0) > oreBefore) {
+  // Loose ore underfoot is stowed before the pop below, so picking a pile back
+  // up on the climb reads exactly like cutting it out of the rock did -- same
+  // gem, same floater, same chime. It is the same ore.
+  collectOre(world, player);
+  if (cargoUsed(player) > oreBefore) {
     // Freeing ore is the moment the run pays you, and it used to be one small
     // sparkle. Now the refined gem pops out of the rock, the value floats off
     // it, and both the size and the chime climb with the tier -- so a pulse
     // crystal reads as a find and copper reads as copper.
     for (let tier = 0; tier < player.minerals.length; tier++) {
-      if (player.minerals[tier] === lastMinerals[tier]) continue;
+      // Only a gain pops. Dumping drops a count, and testing for "changed"
+      // would have fired the collection flourish for ore going over the side.
+      if (player.minerals[tier] <= lastMinerals[tier]) continue;
 
       const gx = player.px + TILE / 2, gy = player.py + TILE / 2;
       const gem = assets.anim.minerals.gem?.[tier];
@@ -718,13 +1019,99 @@ function update(dt) {
     }
   }
   for (let i = 0; i < player.minerals.length; i++) lastMinerals[i] = player.minerals[i];
+
+  // ------------------------------------------------------------------- heat
+  // Heat was a bar in a HUD the player is not looking at -- they are looking at
+  // the bit. So the bit says it: friction sparks while it is cutting cool, an
+  // orange tip past the line where the game first warns about heat, a red one
+  // at the point the laser refuses to fire. Those two thresholds are reused
+  // deliberately rather than invented, so the art marks the same lines the
+  // rules already treat as meaningful.
+  if (player.drilling && player.drillTarget) {
+    state.tipT = (state.tipT || 0) - dt;
+    if (state.tipT <= 0) {
+      const t = player.drillTarget;
+      const crit = player.heat >= LASER.lockout;
+      const warm = player.heat >= 45;
+      // The row names stay as literals inside the call rather than going via a
+      // variable, so check.mjs can still see which rows this spawns. A typo
+      // here fails silently at runtime, which is the whole reason that check
+      // exists -- routing the name through a local would hide it again.
+      // The cool-cutting sparks are deliberately the smallest of the three:
+      // they fire four times a second for the whole descent, and at the same
+      // size as the heat warnings they drowned the thing they exist to contrast
+      // with. Hot and critical are bigger because they are news.
+      fx.spawn(crit ? 'tipcrit' : warm ? 'tiphot' : 'friction',
+               t.x * TILE + TILE / 2, t.y * TILE + TILE / 2, warm ? 0.8 : 0.42);
+      state.tipT = warm ? 0.17 : 0.26;
+    }
+  } else if (player.heat > 30) {
+    // Shedding. The ice shelf and a pause off the trigger both cool the bit,
+    // and neither of them used to look like anything at all.
+    state.steamT = (state.steamT || 0) - dt;
+    if (state.steamT <= 0) {
+      fx.spawn('steam', player.px + 16, player.py + 10, 0.6);
+      state.steamT = 0.5;
+    }
+  }
+
+  // ------------------------------------------------------------------ cargo
+  // A full bay is the one thing in the game that turns a find into a decision,
+  // so it must be impossible to miss. Three cues, because the player is looking
+  // at the shaft and not at the HUD: the ore stays visibly lying in the tile it
+  // came out of, the gauge flashes, and the drill says so in words.
+  if (player.spilled) {
+    const { tier, count } = player.spilled;
+    player.spilled = null;
+    floaters.push('BAY FULL', player.px + 16, player.py - 12, '#ff8c3a', 0.95);
+    floaters.push(`${count} LEFT HERE`, player.px + 16, player.py + 4, ORE_TINT[tier], 0.8);
+    audio.warn();
+    state.bayFlash = 0.7;
+    if (tips.show('cargo')) store(save);
+  }
+  state.bayFlash = Math.max(0, (state.bayFlash || 0) - dt);
+
+  // Jettison the cheapest ore aboard. Holding repeats, because clearing a dozen
+  // copper one press at a time to make room for a vein is busywork rather than
+  // a decision -- the decision is which tier to keep, and that is made once.
+  state.dumpT = Math.max(0, (state.dumpT || 0) - dt);
+  state.dumpNagT = Math.max(0, (state.dumpNagT || 0) - dt);
+  if (input.tapped('dump') || (input.held('dump') && state.dumpT <= 0)) {
+    const out = dumpOre(player, world);
+    state.dumpT = 0.14;
+    if (typeof out === 'object') {
+      floaters.push(`-1 ${ORE_NAMES[out.tier]}`,
+                    out.x * TILE + TILE / 2, out.y * TILE, ORE_TINT[out.tier], 0.85);
+      fx.spawn('dustpuff', out.x * TILE + TILE / 2, out.y * TILE + TILE / 2, 0.6);
+      audio.dump();
+    } else if (state.dumpNagT <= 0) {
+      floaters.push(out === 'empty' ? 'BAY EMPTY' : 'NOWHERE TO DUMP',
+                    player.px + 16, player.py, '#8c85a0', 0.8);
+      state.dumpNagT = 0.8;
+    }
+  }
+
   audio.drill(player.drilling, player.drillTarget
     ? world.hardness(player.drillTarget.x, player.drillTarget.y) : 1);
   audio.ambience(player.ty / CORE_TOP, state.escaping);
-  audio.tick(dt);
 
   updateAliens(aliens, world, player, dt, (a) => {
     if (a.hp <= 0) return;
+    // A leech robs the bay rather than denting the hull. It is the only enemy
+    // whose damage is counted in credits, and it keeps what it takes.
+    if (a.kind.steals) {
+      if (player.invuln > 0) return;
+      const took = leechSteal(a, player, world);
+      player.invuln = 0.75;
+      if (took > 0) {
+        floaters.push(`-${took} ORE`, player.px + 16, player.py, '#a77ff0');
+        fx.spawn('sparks', player.px + 16, player.py + 16, 0.7);
+        audio.warn();
+        state.shake = Math.max(state.shake, 0.3);
+        if (tips.show('leech')) store(save);
+      }
+      return;
+    }
     if (damage(player, a.kind.dmg, fx)) {
       fx.spawn('sparks', player.px + 16, player.py + 16);
       floaters.push(`-${a.kind.dmg}`, player.px + 16, player.py, '#ff6b5b');
@@ -740,6 +1127,9 @@ function update(dt) {
       audio.hurt();
       state.shake = Math.max(state.shake, 0.4);
     }
+    // It just opened itself up to fire at you. Say so the first time, while the
+    // window is actually open.
+    if (tips.show('vent')) store(save);
   }, (a, reach) => {
     // the slam lands wherever you are standing when the windup ends
     fx.spawn('explosion', a.px + 16, a.py + 16, 1.6);
@@ -750,7 +1140,12 @@ function update(dt) {
       floaters.push(`-${a.kind.slam}`, player.px + 16, player.py, '#ff6b5b');
     }
   });
-  ramAliens(aliens, player, dt, alienKilled);
+  // The shell tip fires on the first ram the armour actually eats, which is the
+  // moment it is confusing -- the crab flashed, the bar barely moved, and
+  // nothing on screen said why.
+  ramAliens(aliens, player, dt, alienKilled, (a, through) => {
+    if (a.kind.armor && through < 1 && tips.show('shell')) store(save);
+  });
 
   // The laser. One shot per press, gated by its own cooldown and by heat, so
   // holding or mashing the button does nothing the cooldown has not allowed.
@@ -766,16 +1161,22 @@ function update(dt) {
   } else if (shot) {
     audio.laser();
     state.shake = Math.max(state.shake, 0.14);
+    // Muzzle flash at the emitter, so a shot reads as leaving the drill and not
+    // merely as a line that appeared.
+    // The beam rows are drawn firing right, so they are rotated onto the
+    // actual heading -- otherwise a shot straight down paints a sideways beam.
+    const beamAng = Math.atan2(shot.dy, shot.dx);
+    fx.spawn('beamfire', player.px + 16, player.py + 16, 0.9, beamAng);
     for (const h of shot.hits) {
       const a = h.alien;
       floaters.push(`-${Math.max(1, Math.round(h.dmg))}`, a.px + 16, a.py, '#ff4fd8', 0.8);
-      fx.spawn('sparks', a.px + 16, a.py + 16, 0.7);
+      fx.spawn('beamarmour', a.px + 16, a.py + 16, 0.8, beamAng);
       if (h.killed) alienKilled(a);
     }
     if (shot.rock) {
       const rx = shot.rock.x * TILE + 16, ry = shot.rock.y * TILE + 16;
-      fx.spawn(shot.broke ? 'dustpuff' : 'sparks', rx, ry, 0.8);
-      if (shot.ore >= 0) {
+      fx.spawn(shot.broke ? 'dustpuff' : 'beamrock', rx, ry, 0.8, shot.broke ? 0 : beamAng);
+      if (shot.ore >= 0 && shot.kept > 0) {
         fx.pop(assets.anim.minerals.gem?.[shot.ore], rx, ry, 0.55 + shot.ore * 0.09, 22 + shot.ore * 7);
         floaters.push(`+${Math.round((shot.ore + 1) * 10 * player.stats.cargoMult * diff.payout)}`,
                       rx, ry - 16, ORE_TINT[shot.ore], 1 + shot.ore * 0.22);
@@ -796,11 +1197,23 @@ function update(dt) {
       floaters.push('FUEL -11', player.px + 16, player.py, '#e8b02b');
       audio.warn();
     }
+  }, (h) => {
+    // The magnet drags the drill onto its own tile from one step away, where
+    // it then shocks you like any other hazard. It is the only hazard that
+    // closes the distance, so a corridor past one is timed rather than walked.
+    if (player.moving || player.dead) return;
+    player.tx = h.x; player.ty = h.y;
+    player.px = h.x * TILE; player.py = h.y * TILE;
+    fx.spawn('sparks', player.px + 16, player.py + 16, 0.9);
+    floaters.push('PULLED', player.px + 16, player.py, '#39d7e8');
+    audio.warn();
+    state.shake = Math.max(state.shake, 0.45);
+    if (tips.show('magnet')) store(save);
   });
 
   updatePickups(pickups, player, (u) => {
     const kind = applyPickup(u, player);
-    fx.spawn(kind === 'coolant' ? 'shieldhit' : 'sparkle', player.px + 16, player.py + 16);
+    fx.spawn(kind === 'coolant' ? 'steam' : 'sparkle', player.px + 16, player.py + 16);
     const said = { fuel: [`+${u.kind.amount} FUEL`, '#e8b02b'], repair: [`+${u.kind.amount} HULL`, '#4ae06b'],
                    coolant: ['HEAT PURGED', '#39d7e8'], shield: ['SHIELD UP', '#39d7e8'],
                    boost: ['OVERDRIVE', '#e8b02b'] }[kind];
@@ -832,21 +1245,65 @@ function update(dt) {
     // which is soft to cut but costs seconds against a clock that is already
     // running -- the climb was a pure retrace of ground already cleared, which
     // made the most dramatic phase of the run the least interesting one.
+    // How far through the escape window we are, 0 to 1. Everything about the
+    // collapse leans on this, so the planet is visibly losing its fight with
+    // itself rather than ticking down a number.
+    const panic = Math.max(0, Math.min(1, 1 - state.escapeLeft / diff.escape));
+    state.panic = panic;   // the renderer leans on this too
+
+    // The flood. Pinned to the same clock as the countdown, so it reaches the
+    // surface exactly as the timer expires -- it cannot lose a run the clock
+    // would have won, it just makes the deadline something you can see coming
+    // up the shaft behind you.
+    state.lava = lavaLevel(state.escapeLeft, diff.escape);
+    const burned = lavaBurn(player, state.lava, dt);
+    if (burned > 0) {
+      state.shake = Math.max(state.shake, 0.5);
+      state.lavaHurtT = (state.lavaHurtT || 0) - dt;
+      if (state.lavaHurtT <= 0) {
+        state.lavaHurtT = 0.28;
+        floaters.push('BURNING', player.px + 16, player.py, '#ff8c3a');
+        fx.spawn('magmaburst', player.px + 16, player.py + 16, 1.1);
+        audio.hurt();
+      }
+    }
+    // Bubbles and embers along the surface, only where it is actually on
+    // screen. A flat fill reads as a wall of paint; it is the things breaking
+    // out of it that make it read as molten.
+    const onScreen = state.lava * TILE - cam.y;
+    if (onScreen > VIEW_TOP - TILE && onScreen < CH + TILE) {
+      state.boilT = (state.boilT || 0) - dt;
+      if (state.boilT <= 0) {
+        state.boilT = 0.16 + Math.random() * 0.2;
+        const bx = cam.x + Math.random() * CW;
+        // Just *above* the waterline. Effects draw before the flood does, so
+        // anything spawned inside the body is painted straight over -- and
+        // breaking out of the surface is what they should look like anyway.
+        fx.spawn(Math.random() < 0.55 ? 'bubble' : 'ember',
+                 bx, state.lava * TILE - TILE * 0.45, 0.8);
+      }
+    }
+
+    // It announces itself before it arrives: the bubbling is audible and the
+    // surface is lit from below well before it is a problem.
+    const gap = state.lava - player.ty;
+    if (gap > 0 && gap < LAVA.warn) {
+      state.lavaNear = (state.lavaNear || 0) - dt;
+      if (state.lavaNear <= 0) {
+        state.lavaNear = 1.0;
+        audio.rumble();
+        if (tips.show('lava')) store(save);
+      }
+    }
+
     state.tremor -= dt;
     if (state.tremor <= 0) {
-      state.tremor = 4.5 + Math.random() * 2.5;
-      let dropped = 0;
-      for (let tries = 0; tries < 24 && dropped < 3; tries++) {
-        const y = player.ty - 4 - Math.floor(Math.random() * 10);
-        const x = player.tx + Math.floor(Math.random() * 3) - 1;
-        if (y < 4) continue;
-        if (world.collapse(x, y)) {
-          dropped++;
-          fx.spawn('dustpuff', x * TILE + 16, y * TILE + 16);
-        }
-      }
+      state.tremor = TREMOR.gap(panic) + Math.random() * TREMOR.jitter(panic);
+      const dropped = runTremor(world, player, panic, Math.random, (x, y) => {
+        fx.spawn('dustpuff', x * TILE + 16, y * TILE + 16);
+      });
       if (dropped) {
-        state.shake = Math.max(state.shake, 0.6);
+        state.shake = Math.max(state.shake, 0.5 + panic * 0.55);
         audio.rumble();
       }
     }
@@ -898,7 +1355,7 @@ function update(dt) {
   // drains with no cue that you crossed from low into bleeding.
   if (player.fuel <= 0 && !player.dead && Math.floor(state.time * 3) % 2 === 0
       && Math.floor((state.time - dt) * 3) % 2 !== 0) {
-    fx.spawn('sparks', player.px + 16, player.py + 16);
+    fx.spawn('sputter', player.px + 16, player.py + 16);
     audio.warn();
   }
 
@@ -1018,6 +1475,10 @@ function render() {
   fx.draw(ctx, cam);
   drawLight();
   drawBossGlow();
+  // After the darkness, so the flood lights the shaft rather than being dimmed
+  // by it -- the one thing down there that should be impossible to miss.
+  drawLava();
+  drawCollapse();
   floaters.draw(ctx, cam);
   ctx.restore();
 

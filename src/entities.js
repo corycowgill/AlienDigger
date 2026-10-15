@@ -2,10 +2,17 @@
 // updates when it is near the camera, so depth costs nothing until you get there.
 
 import { TILE, W, D, CORE_TOP, EMPTY } from './world.js';
-import { damage } from './player.js';
+import { damage, cargoRoom } from './player.js';
 
 // Drilling bought per point: 100 fuel = 84.6 hardness, 100 hull = 36.7.
 const FUEL_TO_HULL = 2.31;
+
+// The drill's eight headings, for working out which side a ram landed on.
+const RAM_DELTA = {
+  left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1],
+  upleft: [-1, -1], upright: [1, -1],
+  downleft: [-1, 1], downright: [1, 1],
+};
 
 // `from`/`to` bound the depth band a kind spawns in. Without `to`, nothing was
 // ever gated out, so at depth every kind stayed equally likely and a 6-damage
@@ -28,6 +35,27 @@ export const ALIEN_KINDS = [
   { row: 'spitter',  hp: 9,  dmg: 12, speed: 1.3, from: 70, ranged: 5, spitDmg: 10 },
   { row: 'swarmlet', hp: 2,  dmg: 4,  speed: 3.0, from: 20, to: 95,  erratic: true },
   { row: 'lurker',   hp: 15, dmg: 16, speed: 2.1, from: 92, ambush: 5 },
+
+  // A second wave of kinds, each added for an answer the first five did not
+  // have. Spawn rates are unchanged -- these widen the pool rather than deepen
+  // it, so a run meets more different things, not more things.
+  //   steals   takes ore out of the bay instead of hull off the drill
+  //   rooted   never moves; it is a position to route around, not a chase
+  //   splits   bursts into this many swarmlets when killed
+  //   phases   ignores rock entirely, so it cannot be walled out
+  // Tuned up after measuring. The first pass at these numbers made the game
+  // *easier*: they share the spawn budget with the original five, so a soft new
+  // kind does not add danger, it displaces danger. Greedy play went from 27/40
+  // to 31/40 purely on dilution. Variety has to pay its own way.
+  { row: 'oreleech',  hp: 7,  dmg: 0,  speed: 2.7, from: 30, to: 165, steals: 4 },
+  { row: 'sentinel',  hp: 16, dmg: 11, speed: 0,   from: 60, ranged: 7,
+    spitDmg: 15, armor: 0.4, rooted: true },
+  { row: 'broodsac',  hp: 7,  dmg: 8,  speed: 1.1, from: 25, to: 120, splits: 3 },
+  { row: 'magmaling', hp: 5,  dmg: 13, speed: 2.6, from: 150, erratic: true },
+  // Hardness 99 is "any rock at all", which reuses the burrower path rather
+  // than inventing a second way to move through walls. It cannot be shut out,
+  // so it does not need to be fast to be a problem.
+  { row: 'glowfly',   hp: 4,  dmg: 10, speed: 1.2, from: 45, to: 175, burrows: 99 },
 ];
 
 export const HAZARD_KINDS = [
@@ -39,7 +67,18 @@ export const HAZARD_KINDS = [
   { row: 'electricvein', dmg: 16, from: 100 },
   { row: 'spiketrap',    dmg: 13, from: 50 },
   { row: 'voidpit',      dmg: 25, from: 118 },
+  // A geyser is only dangerous while it is firing, which its three frames
+  // already show -- it is the one hazard you can stand on and then walk off.
+  { row: 'geyser',       dmg: 20, from: 45, duty: 3.0 },
+  { row: 'sinkhole',     dmg: 9,  from: 55 },
+  { row: 'magnetnode',   dmg: 14, from: 70, pull: true },
 ];
+
+// A geyser spends two thirds of its cycle inert. Everything else is always on.
+export function hazardArmed(h) {
+  if (!h.kind.duty) return true;
+  return (h.t % h.kind.duty) > h.kind.duty * 0.62;
+}
 
 // Index into the minerals sheet's "pickup" row, which has five frames. The last
 // three sat unused while the row was drawn for them, so each now does the thing
@@ -124,13 +163,29 @@ export function populate(world, rand, density = 1) {
         continue;
       }
 
-      if (rand() < 0.03 * density) {
+      // Raised from 0.030 when the second wave of kinds landed. Five new kinds
+      // share the same spawn budget, and the softer ones displace the lurkers
+      // and crabs rather than adding to them -- measured, variety alone took
+      // competent play from 27/40 to 31/40. More kinds has to mean more of
+      // them, or the game gets easier the more there is in it. 0.032 puts it
+      // back on 41/60, which is the two-in-three the rest of the balance
+      // assumes; 0.036 overshot to 35/60.
+      if (rand() < 0.032 * density) {
         const pool = ALIEN_KINDS.filter((k) => y >= k.from && y < (k.to ?? Infinity));
         if (pool.length) {
           const kind = pool[Math.floor(rand() * pool.length)];
+          const t = rand() * 4;
+          // One roll, used twice. It has to face the way it will first walk --
+          // and drawing a second number here would shift the whole PRNG stream
+          // and silently regenerate every world behind every tuned figure.
+          const dx = rand() < 0.5 ? -1 : 1;
           aliens.push({
-            kind, x, y, hp: kind.hp, maxHp: kind.hp, t: rand() * 4,
-            dx: rand() < 0.5 ? -1 : 1, px: x * TILE, py: y * TILE,
+            kind, x, y, hp: kind.hp, maxHp: kind.hp, t,
+            dx, px: x * TILE, py: y * TILE,
+            // Without this a crab that has not moved yet has no armoured side
+            // at all, so the toughest alien in the mid game would spawn with
+            // its shell switched off.
+            face: [dx, 0],
           });
         }
       } else if (rand() < 0.035 * density) {
@@ -192,7 +247,8 @@ export function populate(world, rand, density = 1) {
   world.chargeSockets.forEach((sock, i) => {
     aliens.push({
       kind: guard, x: sock.x, y: sock.y - 4, hp: guard.hp, maxHp: guard.hp, t: i,
-      dx: i % 2 ? 1 : -1, px: sock.x * TILE, py: (sock.y - 4) * TILE,
+      dx: i % 2 ? 1 : -1, face: [i % 2 ? 1 : -1, 0],
+      px: sock.x * TILE, py: (sock.y - 4) * TILE,
     });
     if (i < 2) {
       hazards.push({ kind: deep, x: sock.x + 3, y: sock.y, t: i, cooldown: 0 });
@@ -224,6 +280,18 @@ export function populate(world, rand, density = 1) {
   return { aliens, hazards, pickups, props };
 }
 
+// How long a spitter stays open after firing, and how much harder it is to hurt
+// while it does. 1.1s is a little longer than it takes to cross the tile it was
+// shooting down, so closing the moment it fires is a real plan rather than a
+// reflex test.
+export const VENT_TIME = 1.1;
+export const VENT_BONUS = 1.6;
+
+// A lurker coils before it bolts. It hits harder than anything but the boss and
+// used to give no warning at all, which made it a tax on walking past rather
+// than something to react to. Short enough to still be a scare.
+export const COIL_TIME = 0.45;
+
 // The Guardian used to be one verb: drive in and hold until it died. It now
 // runs a cycle, so the fight has a rhythm to read -- its plating shrugs off
 // ramming, it opens up for a window worth committing to, and it telegraphs a
@@ -244,16 +312,54 @@ function updateGuardian(a, player, dt, onSlam) {
   }
 }
 
-// How much of a ram lands, given what the boss is currently doing.
-export function ramScale(a) {
-  if (!a.boss) return 1;
-  return a.phase === 'exposed' ? 1.5 : a.phase === 'armored' ? 0.45 : 0.6;
+// How much of a hit lands, given what the target is doing and which side it
+// came in on. One function for both the ram and the laser, because the moment
+// they disagree the player is learning two different games -- and it already
+// folds in the armour fraction that both call sites used to apply themselves.
+//
+// (ax, ay) points from the alien toward whatever hit it. For a ram that is the
+// reverse of the drill's heading, since the drill struck with its nose; for a
+// beam it is the reverse of the beam's travel.
+//
+// Every kind now has an answer, and they are different answers. Before this the
+// five alien behaviours all resolved to the same two verbs -- drive into it, or
+// shoot it -- so the AI carried distinctions the player's decisions did not.
+export function hitScale(a, ax = 0, ay = 0) {
+  let k = 1;
+
+  if (a.boss) {
+    // The Guardian's plating is a phase rather than a direction: there is no
+    // behind it worth finding in a room that open.
+    k *= a.phase === 'exposed' ? 1.5 : a.phase === 'armored' ? 0.45 : 0.6;
+  } else if (a.kind.armor) {
+    // A shell only covers the way it is pointing. Meeting a rock crab head-on
+    // in a corridor is the expensive way to kill it; its flank and its back are
+    // bare. Frontal is the forward hemisphere, not just dead-on, so a step to
+    // one side is not enough -- you have to actually get beside or behind it.
+    const f = a.face;
+    const frontal = f && (f[0] * ax + f[1] * ay) > 0;
+    if (frontal) k *= 1 - a.kind.armor;
+  }
+
+  // A spitter that has just fired is venting and cannot cover itself. This is
+  // the window its whole behaviour is built around: it holds its ground while
+  // it has a clear line, so the way to reach it is to eat the shot and close
+  // while it recharges, rather than to route around it forever.
+  if (a.vent > 0) k *= VENT_BONUS;
+
+  return k;
 }
+
+// Kept so a ram and a beam agree on the boss when no direction is to hand.
+export function ramScale(a) { return hitScale(a); }
 
 export function updateAliens(aliens, world, player, dt, onHit, onSpit, onSlam) {
   for (const a of aliens) if (a.hurt) a.hurt = Math.max(0, a.hurt - dt);
   for (const a of aliens) {
     a.t += dt;
+    // Ticked before the range gate, or a spitter that fired just as you left
+    // its band would stay vented until you came back.
+    if (a.vent > 0) a.vent = Math.max(0, a.vent - dt);
     const near = Math.abs(a.y - player.ty) < 24;
     if (!near) continue;
     if (a.boss && a.hp > 0) updateGuardian(a, player, dt, onSlam);
@@ -275,19 +381,41 @@ export function updateAliens(aliens, world, player, dt, onHit, onSpit, onSlam) {
       if (shot && a.spitCd <= 0) {
         a.spitCd = 2.5;
         a.spitting = 0.45;
+        // Firing opens it up. The shot is the price of the window, which is
+        // what turns the one enemy you cannot out-range into a timing problem
+        // rather than a wall.
+        a.vent = VENT_TIME;
         onSpit?.(a);
       }
       a.spitting = Math.max(0, (a.spitting || 0) - dt);
       if (shot) continue;
     }
 
+    // A sentinel is rooted into the rock. It never takes a step, so it is a
+    // place on the map to route around rather than something that comes to
+    // you -- and the only alien the player can simply decide not to fight.
+    if (a.kind.rooted) {
+      if (a.x === player.tx && a.y === player.ty) onHit(a);
+      continue;
+    }
+
     const dist = Math.abs(a.x - player.tx) + Math.abs(a.y - player.ty);
 
     // A lurker is an ambush predator: it does not patrol, it waits. Nothing
-    // gives it away until the drill is close enough, and then it is fast.
+    // gives it away until the drill is close enough -- and then it coils, which
+    // is the only warning you get, and then it is fast.
     if (a.kind.ambush) {
-      a.woke = a.woke || dist <= a.kind.ambush;
+      if (!a.woke && dist <= a.kind.ambush) {
+        a.woke = true;
+        a.coil = COIL_TIME;
+      }
       if (!a.woke) continue;
+      // Coiled: coming, but not yet moving. Half a second to clear the lane.
+      if (a.coil > 0) {
+        a.coil = Math.max(0, a.coil - dt);
+        if (a.x === player.tx && a.y === player.ty) onHit(a);
+        continue;
+      }
     }
 
     // drift along open tunnels, turning at walls; chase when the drill is close
@@ -325,6 +453,10 @@ export function updateAliens(aliens, world, player, dt, onHit, onSpit, onSlam) {
     if (!canPass) {
       a.dx = -a.dx;
     } else {
+      // Which way it is pointing. The renderer mirrors the sprite on this, and
+      // a shell is only armour on the side it faces, so this has to be the
+      // committed direction rather than the momentary pixel delta.
+      if (tx !== a.x || ty !== a.y) a.face = [Math.sign(tx - a.x), Math.sign(ty - a.y)];
       const goalX = tx * TILE, goalY = ty * TILE;
       a.px += Math.sign(goalX - a.px) * Math.min(step, Math.abs(goalX - a.px));
       a.py += Math.sign(goalY - a.py) * Math.min(step, Math.abs(goalY - a.py));
@@ -339,18 +471,21 @@ export function updateAliens(aliens, world, player, dt, onHit, onSpit, onSlam) {
 
 // Ramming is the main offence (the laser in laser.js is a rationed sidearm). Contact hurts both sides,
 // so small aliens clear out of the way and the boss stays something to dodge.
-export function ramAliens(aliens, player, dt, onKill) {
+export function ramAliens(aliens, player, dt, onKill, onBite) {
   for (const a of aliens) {
     if (a.hp <= 0) continue;
     if (a.x !== player.tx || a.y !== player.ty) continue;
-    // a rock crab's shell is the point of it
-    const through = (1 - (a.kind.armor || 0)) * ramScale(a);
+    // The drill struck with its nose, so it came from behind its own heading --
+    // which is the side of the alien the hit landed on. Drive into a crab's
+    // face and the shell eats half of it; catch it side-on and it does not.
+    const [hx, hy] = RAM_DELTA[player.facing] || RAM_DELTA.down;
+    const through = hitScale(a, -hx, -hy);
     const bite = (player.moving || player.drilling ? 14 : 0) * through * dt;
     a.hp -= bite;
     // Flagged so the renderer can flash it and show the bar reacting: without
     // this you drive into the boss, take damage and cannot tell whether you
     // are achieving anything at all.
-    if (bite > 0) a.hurt = 0.12;
+    if (bite > 0) { a.hurt = 0.12; onBite?.(a, through); }
     if (a.hp <= 0) onKill(a);
   }
 }
@@ -366,16 +501,177 @@ function clearLine(world, a, player) {
   return true;
 }
 
-export function updateHazards(hazards, player, dt, onHit) {
+// An ore leech does not hurt the drill, it robs it -- which is a worse outcome
+// deep in a run than the hull it would otherwise have taken, and the only
+// enemy in the game whose damage is measured in credits. What it takes is
+// carried on its body, so killing it drops the haul back on the floor.
+export function leechSteal(a, player, world) {
+  const want = a.kind.steals || 0;
+  if (want <= 0) return 0;
+  // Always the best ore aboard. A thief that took copper would be a nuisance;
+  // one that takes the pulse crystal is a reason to turn and fight.
+  let tier = -1;
+  for (let i = player.minerals.length - 1; i >= 0; i--) {
+    if (player.minerals[i] > 0) { tier = i; break; }
+  }
+  if (tier < 0) return 0;
+  const took = Math.min(want, player.minerals[tier]);
+  player.minerals[tier] -= took;
+  a.loot = a.loot || [0, 0, 0, 0, 0];
+  a.loot[tier] += took;
+  return took;
+}
+
+// Everything a leech was carrying falls where it died, as ordinary loose ore.
+export function dropLoot(a, world) {
+  if (!a.loot) return 0;
+  let dropped = 0;
+  for (let tier = 0; tier < a.loot.length; tier++) {
+    if (a.loot[tier] > 0) dropped += world.drop(a.x, a.y, tier, a.loot[tier]);
+  }
+  a.loot = null;
+  return dropped;
+}
+
+// A broodsac is a delayed swarm: cheap to kill, expensive to kill badly.
+export function splitBrood(a, world) {
+  const n = a.kind.splits || 0;
+  if (n <= 0) return [];
+  const kind = ALIEN_KINDS.find((k) => k.row === 'swarmlet');
+  const young = [];
+  for (let i = 0; i < n; i++) {
+    const x = Math.max(1, Math.min(W - 2, a.x + (i - 1)));
+    if (world.solid(x, a.y)) continue;
+    young.push({
+      kind, x, y: a.y, hp: kind.hp, maxHp: kind.hp, t: i * 0.3,
+      dx: i % 2 ? 1 : -1, face: [i % 2 ? 1 : -1, 0],
+      px: x * TILE, py: a.y * TILE,
+    });
+  }
+  return young;
+}
+
+export function updateHazards(hazards, player, dt, onHit, onPull) {
   for (const h of hazards) {
     if (h.spent) continue;
     h.t += dt;
     h.cooldown -= dt;
     if (Math.abs(h.y - player.ty) > 20) continue;
+
+    // A magnet node reaches one tile. It is the only hazard that comes to you,
+    // which makes a corridor past it a thing to time rather than to walk.
+    if (h.kind.pull && inPullRange(h, player) && h.cooldown <= 0) {
+      h.cooldown = 1.4;
+      onPull?.(h);
+      continue;
+    }
+
     if (h.x === player.tx && h.y === player.ty && h.cooldown <= 0) {
+      if (!hazardArmed(h)) continue;
       h.cooldown = 1.1;
       onHit(h);
     }
+  }
+}
+
+// A magnet node reaches exactly one tile. On its own tile it is an ordinary
+// hazard; one step away it drags you in.
+function inPullRange(h, player) {
+  return Math.abs(h.x - player.tx) + Math.abs(h.y - player.ty) === 1;
+}
+
+// The planet coming apart, shared by the game and the simulator so the two
+// cannot disagree about how hard the climb out is -- the hazard rules drifted
+// exactly this way once already.
+//
+// `panic` runs 0 to 1 across the escape window. Tremors used to fire on a flat
+// 4.5-7s timer dropping three tiles whatever the clock said, so the last ten
+// seconds of a run felt identical to the first ten. Now they close in: more
+// often, and more rubble each time, so the shaft is visibly failing around you
+// by the end.
+export const TREMOR = {
+  gap: (panic) => 4.5 - panic * 2.6,       // seconds between tremors
+  jitter: (panic) => 2.5 - panic * 1.5,    // random spread on that
+  rocks: (panic) => 3 + Math.round(panic * 4),
+};
+
+export function runTremor(world, player, panic, rand = Math.random, onRock) {
+  const want = TREMOR.rocks(panic);
+  let dropped = 0;
+  for (let tries = 0; tries < 40 && dropped < want; tries++) {
+    // Rubble lands in the shaft above the drill -- the way out, not the way
+    // back down, or the collapse would be pushing the player toward the core.
+    const y = player.ty - 3 - Math.floor(rand() * (10 + panic * 8));
+    const x = player.tx + Math.floor(rand() * 3) - 1;
+    if (y < 4) continue;
+    if (world.collapse(x, y)) {
+      dropped++;
+      onRock?.(x, y);
+    }
+  }
+  return dropped;
+}
+
+// ------------------------------------------------------------------- lava
+// Once the charges are armed the core floods and the lava climbs the shaft
+// behind you. The escape already had a deadline; what it did not have was a
+// deadline you could see. A number in the HUD tells you how long is left, but
+// it cannot tell you that the thirty seconds you have left are not enough for
+// the rubble plug directly above you -- the lava can, because it is right there
+// and it is closer than it was.
+//
+// It is pinned to the same clock as the timer rather than given a speed of its
+// own: it reaches the surface exactly as the countdown hits zero. So it never
+// makes a run unwinnable that the clock would have allowed, and the two can
+// never disagree about how much time is left. What it adds is that the danger
+// is now *positional* -- dawdle low and it reaches you long before the clock
+// runs out, which a timer alone could never express.
+export const LAVA = {
+  dps: 52,            // hull per second while standing in it: about two seconds
+  // Tiles below the drill at which the game starts shouting. Measured: a
+  // competent climb keeps the surface about 10 tiles below it the whole way, so
+  // a 6-tile warning would only ever have fired for a run already lost.
+  warn: 13,
+  headStart: 0.12,    // fraction of the window before it starts climbing
+};
+
+// Tile row the lava surface has reached. Above the world (small y) is bad.
+export function lavaLevel(escapeLeft, escape) {
+  if (escapeLeft == null || escape <= 0) return D + 2;
+  const gone = Math.max(0, Math.min(1, 1 - escapeLeft / escape));
+  // A short head start, then linear to the surface. Without it the lava is
+  // already lapping at the core chamber as the third charge goes in, which
+  // reads as a punishment for planting rather than a consequence of it.
+  const climb = Math.max(0, (gone - LAVA.headStart) / (1 - LAVA.headStart));
+  return D + 2 - (D + 2 - 2) * climb;
+}
+
+// Hull damage for a frame spent in the flood. Direct, like heat and starvation:
+// routing it through damage() would hand out i-frames and make standing in lava
+// survivable, which is the one thing it must never be.
+export function lavaBurn(player, level, dt) {
+  if (player.dead || player.ty < level) return 0;
+  const bite = LAVA.dps * dt;
+  player.hull -= bite;
+  if (player.hull <= 0) { player.hull = 0; player.dead = true; }
+  return bite;
+}
+
+// Loose ore lying in an open tile -- spilled by a full bay, jettisoned on
+// purpose, or dug back out of rubble a tremor dropped on it -- is picked up by
+// driving over it, as much of the pile as the bay will take.
+//
+// This runs continuously rather than only on arrival, which is what makes the
+// swap work: parked on a pulse crystal with a full bay, one press of dump sends
+// a copper out behind the drill and the crystal comes aboard the same frame.
+export function collectOre(world, player, onTake) {
+  if (player.dead) return;
+  const tier = world.looseAt(player.tx, player.ty);
+  if (tier < 0) return;
+  const got = world.take(player.tx, player.ty, cargoRoom(player));
+  if (got > 0) {
+    player.minerals[tier] += got;
+    onTake?.(tier, got);
   }
 }
 
@@ -430,9 +726,18 @@ export function applyHazard(h, player, world, fx) {
   // tile, so on the way down they cannot save the fuel of a tile you would
   // otherwise have had to drill.
   const back = player.facing === 'up' ? 1 : -1;
-  const shove = row === 'boulder' ? back : row === 'voidpit' ? 1 : 0;
+  // A sinkhole takes the floor out from under you: the same downward shove a
+  // void pit gives, but it keeps going while there is open space to fall into,
+  // so it costs real climbing rather than one tile.
+  const shove = row === 'boulder' ? back
+              : row === 'voidpit' ? 1
+              : row === 'sinkhole' ? 1 : 0;
   if (shove && !player.moving && !world.solid(player.tx, player.ty + shove)) {
-    player.ty += shove;
+    const far = row === 'sinkhole' ? 3 : 1;
+    for (let i = 0; i < far; i++) {
+      if (world.solid(player.tx, player.ty + shove)) break;
+      player.ty += shove;
+    }
     player.py = player.ty * TILE;
     fx.spawn('dustpuff', player.px + 16, player.py + 16);
   }

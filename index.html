@@ -100,6 +100,11 @@
   .actions button:active { background: rgba(47,210,232,0.34); }
   .actions .fire { color: #ff4fd8; border-color: rgba(255,79,216,0.45); }
   .actions .restart { color: #e8b02b; border-color: rgba(232,176,43,0.4); }
+  /* Short, like SOUND and HELP: dumping is a housekeeping press, not one of the
+     three verbs, and a sixth full-height button pushes the stack into the
+     canvas in portrait. */
+  .actions .dump { height: calc(var(--btn) * 0.7); color: #c19a5b;
+                   border-color: rgba(193,154,91,0.4); }
   .actions .mute { height: calc(var(--btn) * 0.7); color: #8c85a0;
                    border-color: rgba(140,133,160,0.34); }
 
@@ -116,14 +121,18 @@
      portrait stacks instead: picture up top, controls in the room underneath,
      nothing overlapping, and the buttons get bigger because they can. */
   @media (orientation: portrait) {
-    body.touch { --btn: clamp(52px, 8.5vh, 84px); }
+    /* Six buttons rather than five since DUMP landed, and the stack is what
+       binds in portrait: at the old clamp(52px, 8.5vh, 84px) the column ran
+       into the rotate hint under the canvas on a 414x736 or 360x640 screen,
+       where the hint draws over the buttons because it sits a layer above. */
+    body.touch { --btn: clamp(46px, 7.5vh, 76px); }
     /* #wrap is a column flex, so the main axis is vertical: it is
        justify-content that moves the canvas up, not align-items. */
     body.touch #wrap { justify-content: flex-start; padding-top: 5vh; }
     body.touch .pad { bottom: calc(12vh + env(safe-area-inset-bottom)); left: 6vw; }
     body.touch .actions {
       bottom: calc(12vh + env(safe-area-inset-bottom)); right: 6vw;
-      gap: max(8px, 1.2vh);
+      gap: max(6px, 0.9vh);
     }
     /* The canvas is 960x600, so at full width its height is 62.5vw; the hint
        sits just under it. */
@@ -163,11 +172,13 @@
     <div id="help">
       <span class="key-only">
         <b>WASD</b> / <b>arrows</b> drill &nbsp;·&nbsp;
-        <b>E</b> plant charge &nbsp;·&nbsp; <b>F</b> laser &nbsp;·&nbsp; <b>R</b> restart &nbsp;·&nbsp; <b>H</b> help
+        <b>E</b> plant charge &nbsp;·&nbsp; <b>F</b> laser &nbsp;·&nbsp; <b>G</b> dump ore &nbsp;·&nbsp;
+        <b>R</b> restart &nbsp;·&nbsp; <b>H</b> help
       </span>
       <span class="pad-only">
         <b>stick</b> / <b>d-pad</b> drill &nbsp;·&nbsp;
-        <b>A</b> plant charge &nbsp;·&nbsp; <b>B</b> laser &nbsp;·&nbsp; <b>Y</b> restart &nbsp;·&nbsp; <b>X</b> help
+        <b>A</b> plant charge &nbsp;·&nbsp; <b>B</b> laser &nbsp;·&nbsp; <b>RB</b> dump ore &nbsp;·&nbsp;
+        <b>Y</b> restart &nbsp;·&nbsp; <b>X</b> help
       </span>
     </div>
   </div>
@@ -192,6 +203,7 @@
     <div class="actions">
       <button class="fire" data-tap="fire" aria-label="fire laser">FIRE</button>
       <button data-tap="plant" aria-label="plant charge">PLANT</button>
+      <button class="dump" data-tap="dump" aria-label="dump cheapest ore">DUMP</button>
       <button class="restart" data-tap="restart" aria-label="restart">RESTART</button>
       <button class="mute" data-tap="mute" aria-label="toggle sound">SOUND</button>
       <button class="mute" data-tap="help" aria-label="how to play">HELP</button>

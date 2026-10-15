@@ -40,13 +40,20 @@ export const UPGRADES = [
   },
   {
     key: 'cargo', name: 'CARGO BAY', max: 4,
-    blurb: 'Bank more per mineral',
+    blurb: 'Hold more ore, and refine it better',
     cost: (l) => 160 + l * 140,
   },
 ];
 
 // Base values. Level 0 has to reproduce the tuned game exactly, so these are
 // the numbers the balance pass landed on.
+//
+// cargoCap is the one that binds on greed and never on caution. A world holds
+// ~240 tiles of ore; a straight shaft down the spawn column frees 8 of them and
+// a player who detours for veins frees 30 to 50. At 16 the beeline and the
+// fuel-first descent never once fill the bay across 40 simulated runs, while a
+// prospector fills it in 43% of them -- so the limit is only ever met by the
+// player who went looking, which is the player it has something to say to.
 const BASE = {
   drillRate: 2.2,
   maxFuel: 100,
@@ -54,6 +61,7 @@ const BASE = {
   scanner: 7,
   moveTime: 0.14,
   cargoMult: 1,
+  cargoCap: 16,
   cooling: 1,
 };
 
@@ -106,6 +114,12 @@ export function statsFor(levels) {
     scanner: BASE.scanner + 3 * (l.scanner | 0),
     moveTime: BASE.moveTime / (1 + 0.1 * (l.thruster | 0)),
     cargoMult: BASE.cargoMult + 0.2 * (l.cargo | 0),
+    // 16 / 20 / 24 / 28 / 32. Doubling the bay eases the choice rather than
+    // ending it: a maxed hold still fills on about one run in ten for a player
+    // who prospects hard, which is the point of upgrading it at all. +7 a level
+    // was the first cut and it retired the decision by level 2 -- a mechanic
+    // that only exists on a fresh save is not a mechanic.
+    cargoCap: BASE.cargoCap + 4 * (l.cargo | 0),
     cooling: BASE.cooling / (1 + 0.16 * (l.cooling | 0)),
   };
 }

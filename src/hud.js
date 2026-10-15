@@ -112,6 +112,35 @@ export function drawHud(ctx, p, state, cw, muted, strata, maxDepth, diff, laser)
     ctx.fillText(String(count), x + 14, 35);
   });
 
+  // How full the bay is, segmented by tier so the gauge says what is taking up
+  // the room as well as how much is left. A player deciding whether to dump
+  // needs to see that eleven of their twenty slots are copper.
+  const cap = Math.max(1, p.stats.cargoCap);
+  const used = p.minerals.reduce((a, c) => a + c, 0);
+  const full = used >= cap;
+  const flash = (state.bayFlash || 0) > 0 && Math.floor(state.time * 12) % 2 === 0;
+  const CX = 596, CY = 44, CWID = 200, CHGT = 7;
+  ctx.fillStyle = '#0c0a12';
+  ctx.fillRect(CX, CY, CWID, CHGT);
+  let at = 0;
+  p.minerals.forEach((count, i) => {
+    if (count <= 0) return;
+    const w = (CWID * Math.min(count, cap - at)) / cap;
+    ctx.fillStyle = ORE_COLORS[i];
+    ctx.fillRect(CX + Math.round((CWID * at) / cap), CY, Math.max(1, Math.round(w)), CHGT);
+    at += count;
+  });
+  // Tick every fifth slot, so "four slots left" is countable rather than a
+  // fraction of a bar the player has to estimate under pressure.
+  ctx.fillStyle = 'rgba(13,10,20,0.75)';
+  for (let s = 5; s < cap; s += 5) ctx.fillRect(CX + Math.round((CWID * s) / cap), CY, 1, CHGT);
+  ctx.strokeStyle = full ? (flash ? '#ff8c3a' : '#e8b02b') : '#2b2438';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(CX - 0.5, CY - 0.5, CWID + 1, CHGT + 1);
+  ctx.fillStyle = full ? (flash ? '#ff8c3a' : '#e8b02b') : DIM;
+  ctx.font = '9px ui-monospace, monospace';
+  ctx.fillText(full ? `BAY FULL  ${used}/${cap}` : `CARGO  ${used}/${cap}`, CX, 58);
+
   // charges remaining
   ctx.fillStyle = INK;
   ctx.font = '10px ui-monospace, monospace';

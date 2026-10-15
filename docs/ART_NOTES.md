@@ -63,6 +63,29 @@ the code was compensating for missing art:
 Both were prompted in the original ChatGPT conversation so the palette matched
 without having to re-describe it.
 
+Two more followed, from the same conversation and for the same reason:
+
+- `alien_digger_14_heat_laser` is feedback the code had been faking with
+  recoloured rectangles: friction sparks, an orange bit, a red one, steam, the
+  beam leaving and landing, a shield absorbing, a hull cracking, an engine
+  sputtering dry. Ten rows of four.
+- `alien_digger_16_cavern_decor` is scenery, one row per stratum. The four cells
+  in a row are *variants*, not animation frames, which is why `COUNTS` reads 4
+  for rows that never animate.
+
+Adding a sheet takes exactly three declarations and no new architecture:
+`ROW_NAMES[stem]` in `slice_sheets.py`, `TARGET[stem]` plus a `COUNTS` entry per
+row in `normalize_frames.py`, and one line in `SHEETS` in `src/assets.js`. Then
+run all three scripts **in order** -- `slice_sheets.py` writes `art/atlas.json`
+from scratch and only handles sheets with alpha, so running `normalize` before
+`slice_opaque` fails on a missing tileset key.
+
+Both new sheets sliced on the first attempt: sheet 14 over-split 4 of its 10
+rows (loose sparks and smoke read as extra frames, exactly as the original FX
+sheet does) and `COUNTS` regrouped them; sheet 16 cut 10x4 exactly. Re-slicing
+with the new sheets present changed nothing in the existing bundle -- the atlas
+diff was 94 insertions and no deletions.
+
 ## Known rough edges
 
 These are AI-generated sheets, so a few frames need a human pass before they ship:

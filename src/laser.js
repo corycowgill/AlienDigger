@@ -7,7 +7,8 @@
 // the same bit that drilling heats. Fire it on a hot rig and it will not fire
 // at all -- so it trades against the dig rather than replacing it.
 
-import { ramScale } from './entities.js';
+import { hitScale, COIL_TIME } from './entities.js';
+import { stowOre } from './player.js';
 
 export const LASER = {
   range: 7,          // tiles
@@ -68,11 +69,17 @@ export function updateLaser(p, world, aliens, wantFire, dt) {
     if (a.hp <= 0) continue;
     for (let k = 0; k < path.length; k += 2) {
       if (a.x !== path[k] || a.y !== path[k + 1]) continue;
-      const dmg = LASER.damage * (1 - (a.kind.armor || 0)) * ramScale(a);
+      // The beam came from back down its own path, so that is the side it hit.
+      // A crab walking across the tunnel ahead takes a beam in the flank; one
+      // marching straight at you does not.
+      const dmg = LASER.damage * hitScale(a, -dx, -dy);
       a.hp -= dmg;
       a.hurt = 0.2;
-      // an ambusher that has been shot is not waiting any more
-      if (a.kind.ambush) a.woke = true;
+      // An ambusher that has been shot is not waiting any more -- but it still
+      // coils first, so the telegraph is the same whether it woke on its own or
+      // you started it. A lurker that skipped its tell because you shot it
+      // would punish the player for using the tool.
+      if (a.kind.ambush && !a.woke) { a.woke = true; a.coil = COIL_TIME; }
       hits.push({ alien: a, dmg, killed: a.hp <= 0 });
       break;
     }
@@ -80,17 +87,21 @@ export function updateLaser(p, world, aliens, wantFire, dt) {
 
   // The rock remembers being scorched: hardness is burned off the tile, so the
   // drill finishes the job faster, and soft rock breaks outright.
-  let broke = false, ore = -1;
+  let broke = false, ore = -1, kept = 0;
   if (rock) {
     const i = world.idx(rock.x, rock.y);
     world.hp[i] = Math.max(0, world.hp[i] - LASER.cut);
     if (world.hp[i] <= 0.05) {
-      ore = world.dig(rock.x, rock.y);
-      if (ore >= 0) p.minerals[ore]++;
+      const dug = world.dig(rock.x, rock.y);
+      ore = dug.tier;
+      // Same bay rules as the drill: what will not fit stays in the tile the
+      // beam opened, seven tiles further along than the drill can reach. The
+      // laser is a good way to see ore you cannot yet carry.
+      if (ore >= 0) kept = stowOre(p, world, ore, dug.count, rock.x, rock.y).kept;
       broke = true;
     }
   }
 
   p.beam = { x0: p.tx, y0: p.ty, dx, dy, len, t: LASER.show };
-  return { hits, rock, broke, ore, len, dx, dy };
+  return { hits, rock, broke, ore, kept, len, dx, dy };
 }

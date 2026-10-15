@@ -417,6 +417,483 @@
       }
     }
   },
+  "alien_digger_14_heat_laser": {
+    "animations": {
+      "friction": {
+        "frames": [
+          "game/alien_digger_14_heat_laser/friction_00.png",
+          "game/alien_digger_14_heat_laser/friction_01.png",
+          "game/alien_digger_14_heat_laser/friction_02.png",
+          "game/alien_digger_14_heat_laser/friction_03.png"
+        ],
+        "count": 4
+      },
+      "tiphot": {
+        "frames": [
+          "game/alien_digger_14_heat_laser/tiphot_00.png",
+          "game/alien_digger_14_heat_laser/tiphot_01.png",
+          "game/alien_digger_14_heat_laser/tiphot_02.png",
+          "game/alien_digger_14_heat_laser/tiphot_03.png"
+        ],
+        "count": 4
+      },
+      "tipcrit": {
+        "frames": [
+          "game/alien_digger_14_heat_laser/tipcrit_00.png",
+          "game/alien_digger_14_heat_laser/tipcrit_01.png",
+          "game/alien_digger_14_heat_laser/tipcrit_02.png",
+          "game/alien_digger_14_heat_laser/tipcrit_03.png"
+        ],
+        "count": 4
+      },
+      "steam": {
+        "frames": [
+          "game/alien_digger_14_heat_laser/steam_00.png",
+          "game/alien_digger_14_heat_laser/steam_01.png",
+          "game/alien_digger_14_heat_laser/steam_02.png",
+          "game/alien_digger_14_heat_laser/steam_03.png"
+        ],
+        "count": 4
+      },
+      "beamfire": {
+        "frames": [
+          "game/alien_digger_14_heat_laser/beamfire_00.png",
+          "game/alien_digger_14_heat_laser/beamfire_01.png",
+          "game/alien_digger_14_heat_laser/beamfire_02.png",
+          "game/alien_digger_14_heat_laser/beamfire_03.png"
+        ],
+        "count": 4
+      },
+      "beamrock": {
+        "frames": [
+          "game/alien_digger_14_heat_laser/beamrock_00.png",
+          "game/alien_digger_14_heat_laser/beamrock_01.png",
+          "game/alien_digger_14_heat_laser/beamrock_02.png",
+          "game/alien_digger_14_heat_laser/beamrock_03.png"
+        ],
+        "count": 4
+      },
+      "beamarmour": {
+        "frames": [
+          "game/alien_digger_14_heat_laser/beamarmour_00.png",
+          "game/alien_digger_14_heat_laser/beamarmour_01.png",
+          "game/alien_digger_14_heat_laser/beamarmour_02.png",
+          "game/alien_digger_14_heat_laser/beamarmour_03.png"
+        ],
+        "count": 4
+      },
+      "shieldwrap": {
+        "frames": [
+          "game/alien_digger_14_heat_laser/shieldwrap_00.png",
+          "game/alien_digger_14_heat_laser/shieldwrap_01.png",
+          "game/alien_digger_14_heat_laser/shieldwrap_02.png",
+          "game/alien_digger_14_heat_laser/shieldwrap_03.png"
+        ],
+        "count": 4
+      },
+      "hullcrack": {
+        "frames": [
+          "game/alien_digger_14_heat_laser/hullcrack_00.png",
+          "game/alien_digger_14_heat_laser/hullcrack_01.png",
+          "game/alien_digger_14_heat_laser/hullcrack_02.png",
+          "game/alien_digger_14_heat_laser/hullcrack_03.png"
+        ],
+        "count": 4
+      },
+      "sputter": {
+        "frames": [
+          "game/alien_digger_14_heat_laser/sputter_00.png",
+          "game/alien_digger_14_heat_laser/sputter_01.png",
+          "game/alien_digger_14_heat_laser/sputter_02.png",
+          "game/alien_digger_14_heat_laser/sputter_03.png"
+        ],
+        "count": 4
+      }
+    }
+  },
+  "alien_digger_13_upgrades": {
+    "animations": {
+      "upgdrill": {
+        "frames": [
+          "game/alien_digger_13_upgrades/upgdrill_00.png",
+          "game/alien_digger_13_upgrades/upgdrill_01.png",
+          "game/alien_digger_13_upgrades/upgdrill_02.png",
+          "game/alien_digger_13_upgrades/upgdrill_03.png",
+          "game/alien_digger_13_upgrades/upgdrill_04.png"
+        ],
+        "count": 5
+      },
+      "upgtank": {
+        "frames": [
+          "game/alien_digger_13_upgrades/upgtank_00.png",
+          "game/alien_digger_13_upgrades/upgtank_01.png",
+          "game/alien_digger_13_upgrades/upgtank_02.png",
+          "game/alien_digger_13_upgrades/upgtank_03.png",
+          "game/alien_digger_13_upgrades/upgtank_04.png"
+        ],
+        "count": 5
+      },
+      "upghull": {
+        "frames": [
+          "game/alien_digger_13_upgrades/upghull_00.png",
+          "game/alien_digger_13_upgrades/upghull_01.png",
+          "game/alien_digger_13_upgrades/upghull_02.png",
+          "game/alien_digger_13_upgrades/upghull_03.png",
+          "game/alien_digger_13_upgrades/upghull_04.png"
+        ],
+        "count": 5
+      },
+      "upgscan": {
+        "frames": [
+          "game/alien_digger_13_upgrades/upgscan_00.png",
+          "game/alien_digger_13_upgrades/upgscan_01.png",
+          "game/alien_digger_13_upgrades/upgscan_02.png"
+        ],
+        "count": 3
+      },
+      "upgthrust": {
+        "frames": [
+          "game/alien_digger_13_upgrades/upgthrust_00.png",
+          "game/alien_digger_13_upgrades/upgthrust_01.png",
+          "game/alien_digger_13_upgrades/upgthrust_02.png",
+          "game/alien_digger_13_upgrades/upgthrust_03.png"
+        ],
+        "count": 4
+      },
+      "upgheat": {
+        "frames": [
+          "game/alien_digger_13_upgrades/upgheat_00.png",
+          "game/alien_digger_13_upgrades/upgheat_01.png",
+          "game/alien_digger_13_upgrades/upgheat_02.png",
+          "game/alien_digger_13_upgrades/upgheat_03.png"
+        ],
+        "count": 4
+      },
+      "upgcargo": {
+        "frames": [
+          "game/alien_digger_13_upgrades/upgcargo_00.png",
+          "game/alien_digger_13_upgrades/upgcargo_01.png",
+          "game/alien_digger_13_upgrades/upgcargo_02.png",
+          "game/alien_digger_13_upgrades/upgcargo_03.png"
+        ],
+        "count": 4
+      }
+    }
+  },
+  "alien_digger_19_enemies": {
+    "animations": {
+      "oreleech": {
+        "frames": [
+          "game/alien_digger_19_enemies/oreleech_00.png",
+          "game/alien_digger_19_enemies/oreleech_01.png",
+          "game/alien_digger_19_enemies/oreleech_02.png"
+        ],
+        "count": 3
+      },
+      "sentinel": {
+        "frames": [
+          "game/alien_digger_19_enemies/sentinel_00.png",
+          "game/alien_digger_19_enemies/sentinel_01.png",
+          "game/alien_digger_19_enemies/sentinel_02.png"
+        ],
+        "count": 3
+      },
+      "broodsac": {
+        "frames": [
+          "game/alien_digger_19_enemies/broodsac_00.png",
+          "game/alien_digger_19_enemies/broodsac_01.png",
+          "game/alien_digger_19_enemies/broodsac_02.png"
+        ],
+        "count": 3
+      },
+      "magmaling": {
+        "frames": [
+          "game/alien_digger_19_enemies/magmaling_00.png",
+          "game/alien_digger_19_enemies/magmaling_01.png",
+          "game/alien_digger_19_enemies/magmaling_02.png"
+        ],
+        "count": 3
+      },
+      "glowfly": {
+        "frames": [
+          "game/alien_digger_19_enemies/glowfly_00.png",
+          "game/alien_digger_19_enemies/glowfly_01.png",
+          "game/alien_digger_19_enemies/glowfly_02.png"
+        ],
+        "count": 3
+      },
+      "geyser": {
+        "frames": [
+          "game/alien_digger_19_enemies/geyser_00.png",
+          "game/alien_digger_19_enemies/geyser_01.png",
+          "game/alien_digger_19_enemies/geyser_02.png"
+        ],
+        "count": 3
+      },
+      "sinkhole": {
+        "frames": [
+          "game/alien_digger_19_enemies/sinkhole_00.png",
+          "game/alien_digger_19_enemies/sinkhole_01.png",
+          "game/alien_digger_19_enemies/sinkhole_02.png"
+        ],
+        "count": 3
+      },
+      "magnetnode": {
+        "frames": [
+          "game/alien_digger_19_enemies/magnetnode_00.png",
+          "game/alien_digger_19_enemies/magnetnode_01.png",
+          "game/alien_digger_19_enemies/magnetnode_02.png"
+        ],
+        "count": 3
+      }
+    }
+  },
+  "alien_digger_15_collapse": {
+    "animations": {
+      "fracture": {
+        "frames": [
+          "game/alien_digger_15_collapse/fracture_00.png",
+          "game/alien_digger_15_collapse/fracture_01.png",
+          "game/alien_digger_15_collapse/fracture_02.png",
+          "game/alien_digger_15_collapse/fracture_03.png"
+        ],
+        "count": 4
+      },
+      "rubblefall": {
+        "frames": [
+          "game/alien_digger_15_collapse/rubblefall_00.png",
+          "game/alien_digger_15_collapse/rubblefall_01.png",
+          "game/alien_digger_15_collapse/rubblefall_02.png",
+          "game/alien_digger_15_collapse/rubblefall_03.png"
+        ],
+        "count": 4
+      },
+      "boulderfall": {
+        "frames": [
+          "game/alien_digger_15_collapse/boulderfall_00.png",
+          "game/alien_digger_15_collapse/boulderfall_01.png",
+          "game/alien_digger_15_collapse/boulderfall_02.png",
+          "game/alien_digger_15_collapse/boulderfall_03.png"
+        ],
+        "count": 4
+      },
+      "tunnelcave": {
+        "frames": [
+          "game/alien_digger_15_collapse/tunnelcave_00.png",
+          "game/alien_digger_15_collapse/tunnelcave_01.png",
+          "game/alien_digger_15_collapse/tunnelcave_02.png",
+          "game/alien_digger_15_collapse/tunnelcave_03.png"
+        ],
+        "count": 4
+      },
+      "magmaburst": {
+        "frames": [
+          "game/alien_digger_15_collapse/magmaburst_00.png",
+          "game/alien_digger_15_collapse/magmaburst_01.png",
+          "game/alien_digger_15_collapse/magmaburst_02.png",
+          "game/alien_digger_15_collapse/magmaburst_03.png"
+        ],
+        "count": 4
+      },
+      "quakedust": {
+        "frames": [
+          "game/alien_digger_15_collapse/quakedust_00.png",
+          "game/alien_digger_15_collapse/quakedust_01.png",
+          "game/alien_digger_15_collapse/quakedust_02.png",
+          "game/alien_digger_15_collapse/quakedust_03.png"
+        ],
+        "count": 4
+      },
+      "shockwave": {
+        "frames": [
+          "game/alien_digger_15_collapse/shockwave_00.png",
+          "game/alien_digger_15_collapse/shockwave_01.png",
+          "game/alien_digger_15_collapse/shockwave_02.png",
+          "game/alien_digger_15_collapse/shockwave_03.png"
+        ],
+        "count": 4
+      },
+      "shaftfail": {
+        "frames": [
+          "game/alien_digger_15_collapse/shaftfail_00.png",
+          "game/alien_digger_15_collapse/shaftfail_01.png",
+          "game/alien_digger_15_collapse/shaftfail_02.png",
+          "game/alien_digger_15_collapse/shaftfail_03.png"
+        ],
+        "count": 4
+      },
+      "coredet": {
+        "frames": [
+          "game/alien_digger_15_collapse/coredet_00.png",
+          "game/alien_digger_15_collapse/coredet_01.png",
+          "game/alien_digger_15_collapse/coredet_02.png",
+          "game/alien_digger_15_collapse/coredet_03.png"
+        ],
+        "count": 4
+      },
+      "dustsettle": {
+        "frames": [
+          "game/alien_digger_15_collapse/dustsettle_00.png",
+          "game/alien_digger_15_collapse/dustsettle_01.png",
+          "game/alien_digger_15_collapse/dustsettle_02.png",
+          "game/alien_digger_15_collapse/dustsettle_03.png"
+        ],
+        "count": 4
+      }
+    }
+  },
+  "alien_digger_18_lava": {
+    "animations": {
+      "crest": {
+        "frames": [
+          "game/alien_digger_18_lava/crest_00.png",
+          "game/alien_digger_18_lava/crest_01.png",
+          "game/alien_digger_18_lava/crest_02.png",
+          "game/alien_digger_18_lava/crest_03.png"
+        ],
+        "count": 4
+      },
+      "bubble": {
+        "frames": [
+          "game/alien_digger_18_lava/bubble_00.png",
+          "game/alien_digger_18_lava/bubble_01.png",
+          "game/alien_digger_18_lava/bubble_02.png",
+          "game/alien_digger_18_lava/bubble_03.png"
+        ],
+        "count": 4
+      },
+      "splash": {
+        "frames": [
+          "game/alien_digger_18_lava/splash_00.png",
+          "game/alien_digger_18_lava/splash_01.png",
+          "game/alien_digger_18_lava/splash_02.png",
+          "game/alien_digger_18_lava/splash_03.png"
+        ],
+        "count": 4
+      },
+      "ember": {
+        "frames": [
+          "game/alien_digger_18_lava/ember_00.png",
+          "game/alien_digger_18_lava/ember_01.png",
+          "game/alien_digger_18_lava/ember_02.png",
+          "game/alien_digger_18_lava/ember_03.png"
+        ],
+        "count": 4
+      },
+      "drip": {
+        "frames": [
+          "game/alien_digger_18_lava/drip_00.png",
+          "game/alien_digger_18_lava/drip_01.png",
+          "game/alien_digger_18_lava/drip_02.png",
+          "game/alien_digger_18_lava/drip_03.png"
+        ],
+        "count": 4
+      },
+      "crust": {
+        "frames": [
+          "game/alien_digger_18_lava/crust_00.png",
+          "game/alien_digger_18_lava/crust_01.png",
+          "game/alien_digger_18_lava/crust_02.png",
+          "game/alien_digger_18_lava/crust_03.png"
+        ],
+        "count": 4
+      }
+    }
+  },
+  "alien_digger_16_cavern_decor": {
+    "animations": {
+      "roots": {
+        "frames": [
+          "game/alien_digger_16_cavern_decor/roots_00.png",
+          "game/alien_digger_16_cavern_decor/roots_01.png",
+          "game/alien_digger_16_cavern_decor/roots_02.png",
+          "game/alien_digger_16_cavern_decor/roots_03.png"
+        ],
+        "count": 4
+      },
+      "scrap": {
+        "frames": [
+          "game/alien_digger_16_cavern_decor/scrap_00.png",
+          "game/alien_digger_16_cavern_decor/scrap_01.png",
+          "game/alien_digger_16_cavern_decor/scrap_02.png",
+          "game/alien_digger_16_cavern_decor/scrap_03.png"
+        ],
+        "count": 4
+      },
+      "fossil": {
+        "frames": [
+          "game/alien_digger_16_cavern_decor/fossil_00.png",
+          "game/alien_digger_16_cavern_decor/fossil_01.png",
+          "game/alien_digger_16_cavern_decor/fossil_02.png",
+          "game/alien_digger_16_cavern_decor/fossil_03.png"
+        ],
+        "count": 4
+      },
+      "mining": {
+        "frames": [
+          "game/alien_digger_16_cavern_decor/mining_00.png",
+          "game/alien_digger_16_cavern_decor/mining_01.png",
+          "game/alien_digger_16_cavern_decor/mining_02.png",
+          "game/alien_digger_16_cavern_decor/mining_03.png"
+        ],
+        "count": 4
+      },
+      "stalactite": {
+        "frames": [
+          "game/alien_digger_16_cavern_decor/stalactite_00.png",
+          "game/alien_digger_16_cavern_decor/stalactite_01.png",
+          "game/alien_digger_16_cavern_decor/stalactite_02.png",
+          "game/alien_digger_16_cavern_decor/stalactite_03.png"
+        ],
+        "count": 4
+      },
+      "mushroom": {
+        "frames": [
+          "game/alien_digger_16_cavern_decor/mushroom_00.png",
+          "game/alien_digger_16_cavern_decor/mushroom_01.png",
+          "game/alien_digger_16_cavern_decor/mushroom_02.png",
+          "game/alien_digger_16_cavern_decor/mushroom_03.png"
+        ],
+        "count": 4
+      },
+      "spore": {
+        "frames": [
+          "game/alien_digger_16_cavern_decor/spore_00.png",
+          "game/alien_digger_16_cavern_decor/spore_01.png",
+          "game/alien_digger_16_cavern_decor/spore_02.png",
+          "game/alien_digger_16_cavern_decor/spore_03.png"
+        ],
+        "count": 4
+      },
+      "crystalform": {
+        "frames": [
+          "game/alien_digger_16_cavern_decor/crystalform_00.png",
+          "game/alien_digger_16_cavern_decor/crystalform_01.png",
+          "game/alien_digger_16_cavern_decor/crystalform_02.png",
+          "game/alien_digger_16_cavern_decor/crystalform_03.png"
+        ],
+        "count": 4
+      },
+      "obelisk": {
+        "frames": [
+          "game/alien_digger_16_cavern_decor/obelisk_00.png",
+          "game/alien_digger_16_cavern_decor/obelisk_01.png",
+          "game/alien_digger_16_cavern_decor/obelisk_02.png",
+          "game/alien_digger_16_cavern_decor/obelisk_03.png"
+        ],
+        "count": 4
+      },
+      "ventrock": {
+        "frames": [
+          "game/alien_digger_16_cavern_decor/ventrock_00.png",
+          "game/alien_digger_16_cavern_decor/ventrock_01.png",
+          "game/alien_digger_16_cavern_decor/ventrock_02.png",
+          "game/alien_digger_16_cavern_decor/ventrock_03.png"
+        ],
+        "count": 4
+      }
+    }
+  },
   "alien_digger_03_terrain_tiles": {
     "tiles": [
       "game/alien_digger_03_terrain_tiles/tile_r0_c0.png",

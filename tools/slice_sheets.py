@@ -57,6 +57,44 @@ ROW_NAMES = {
     "alien_digger_12_drill_diagonals": [
         "downright", "upright", "downright_hurt", "upright_hurt",
     ],
+    # Sheet 14: heat, laser and damage feedback. Rows 2 and 3 are the player's
+    # warning and critical heat states, so they are named apart rather than
+    # treated as one "hot" cycle.
+    "alien_digger_14_heat_laser": [
+        "friction", "tiphot", "tipcrit", "steam", "beamfire",
+        "beamrock", "beamarmour", "shieldwrap", "hullcrack", "sputter",
+    ],
+    # Sheet 16: scenery. These rows are variants rather than animation cycles --
+    # four different versions of the same thing, picked per tile from the same
+    # noise field the terrain variants use, so decoration clusters the way the
+    # rock does instead of scattering.
+    # Sheet 19: more of the ecosystem. Rows 1-5 are creatures, 6-8 hazards;
+    # assets.js folds them into the same two namespaces the originals use.
+    "alien_digger_19_enemies": [
+        "oreleech", "sentinel", "broodsac", "magmaling", "glowfly",
+        "geyser", "sinkhole", "magnetnode",
+    ],
+    # Sheet 13: Foundry icons. Ragged rows on purpose -- the ladders are
+    # 5/5/5/3/4/4/4, and the brief's "five stages each" would have been fifteen
+    # sprites the game can never display.
+    "alien_digger_13_upgrades": [
+        "upgdrill", "upgtank", "upghull", "upgscan",
+        "upgthrust", "upgheat", "upgcargo",
+    ],
+    # Sheet 18: the flood. crest and crust are horizontally tileable variants
+    # drawn side by side along the lava surface, not animation cycles.
+    "alien_digger_18_lava": [
+        "crest", "bubble", "splash", "ember", "drip", "crust",
+    ],
+    # Sheet 15: the escape. Every row escalates within itself, frame 1 to 4.
+    "alien_digger_15_collapse": [
+        "fracture", "rubblefall", "boulderfall", "tunnelcave", "magmaburst",
+        "quakedust", "shockwave", "shaftfail", "coredet", "dustsettle",
+    ],
+    "alien_digger_16_cavern_decor": [
+        "roots", "scrap", "fossil", "mining", "stalactite",
+        "mushroom", "spore", "crystalform", "obelisk", "ventrock",
+    ],
     "alien_digger_06_hud_sheet": ["hud"],
     "alien_digger_09_ui_kit": ["ui"],
 }

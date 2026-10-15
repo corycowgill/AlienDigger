@@ -6,6 +6,14 @@
 import { UPGRADES, costOf, buy, statsFor, store } from './progress.js';
 
 const ORE_NAMES = ['Cu', 'Ir', 'Vd', 'Am', 'Pc'];
+
+// Upgrade key -> the art row that draws it. Kept here rather than on the
+// UPGRADES entries so progress.js stays free of anything the simulator cannot
+// import, which is the rule that lets sim.mjs run the real progression.
+const UPG_ART = {
+  drill: 'upgdrill', tank: 'upgtank', hull: 'upghull', scanner: 'upgscan',
+  thruster: 'upgthrust', cooling: 'upgheat', cargo: 'upgcargo',
+};
 const ORE_COLORS = ['#e07a2b', '#d8dbe6', '#7a4fd6', '#e8b02b', '#39d7e8'];
 
 const INK = '#d7d2e0';
@@ -129,13 +137,32 @@ export function createFoundry(save) {
         ctx.lineWidth = picked ? 2 : 1;
         ctx.strokeRect(x0 + 0.5, y + 0.5, panelW - 1, rowH - 9);
 
+        // The part itself, so an upgrade is a thing you can see rather than a
+        // row of pips. The row shows what you currently fly with; at level 0 it
+        // shows what you would be buying, dimmed, because "here is the gear you
+        // do not have yet" is a better pitch than an empty slot.
+        const art = assets?.anim?.upg?.[UPG_ART[u.key]];
+        if (art && art.length) {
+          const img = art[Math.max(0, Math.min(art.length - 1, lvl - 1))];
+          if (img) {
+            const box = rowH - 16;
+            const k = Math.min(box / img.width, box / img.height);
+            const iw = Math.round(img.width * k), ih = Math.round(img.height * k);
+            ctx.save();
+            ctx.globalAlpha = lvl > 0 ? 1 : 0.32;
+            ctx.drawImage(img, Math.round(x0 + 14 + (box - iw) / 2),
+                          Math.round(y + 4 + (box - ih) / 2), iw, ih);
+            ctx.restore();
+          }
+        }
+
         ctx.textAlign = 'left';
         ctx.font = 'bold 13px ui-monospace, monospace';
         ctx.fillStyle = picked ? INK : DIM;
-        ctx.fillText(u.name, x0 + 16, y + 19);
+        ctx.fillText(u.name, x0 + 60, y + 19);
         ctx.font = '11px ui-monospace, monospace';
         ctx.fillStyle = '#6f6883';
-        ctx.fillText(u.blurb, x0 + 16, y + 34);
+        ctx.fillText(u.blurb, x0 + 60, y + 34);
 
         // level pips
         for (let k = 0; k < u.max; k++) {
@@ -161,7 +188,8 @@ export function createFoundry(save) {
       ctx.fillStyle = DIM;
       ctx.fillText(
         `hull ${st.maxHull}  fuel ${st.maxFuel}  drill ${st.drillRate.toFixed(2)}`
-        + `  heat x${st.cooling.toFixed(2)}  scanner ${st.scanner}  haul x${st.cargoMult.toFixed(2)}`,
+        + `  heat x${st.cooling.toFixed(2)}  scanner ${st.scanner}`
+        + `  bay ${st.cargoCap}  haul x${st.cargoMult.toFixed(2)}`,
         cw / 2, top + UPGRADES.length * rowH + 14,
       );
 

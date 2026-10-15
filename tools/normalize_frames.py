@@ -41,6 +41,12 @@ TARGET = {
     "alien_digger_08_charges_props": 48,
     "alien_digger_11_guardian_states": 96,
     "alien_digger_12_drill_diagonals": 64,
+    "alien_digger_14_heat_laser": 64,
+    "alien_digger_13_upgrades": 48,
+    "alien_digger_19_enemies": 48,
+    "alien_digger_15_collapse": 64,
+    "alien_digger_18_lava": 32,
+    "alien_digger_16_cavern_decor": 48,
 }
 TILE_SHEET = "alien_digger_03_terrain_tiles"
 TILE_SIZE = 32
@@ -66,6 +72,22 @@ COUNTS = {
     "charge": 3, "planted": 4, "armed": 4, "coreprop": 5, "surfaceprop": 5,
     "armoured": 3, "opening": 3, "exposed": 3, "windup": 3, "slam": 3,
     "downright": 4, "upright": 4, "downright_hurt": 4, "upright_hurt": 4,
+    # Sheet 14, four frames a row as prompted. The slicer reads 44 because the
+    # loose spark and smoke rows over-split, exactly as the FX sheet's do.
+    "friction": 4, "tiphot": 4, "tipcrit": 4, "steam": 4, "beamfire": 4,
+    "beamrock": 4, "beamarmour": 4, "shieldwrap": 4, "hullcrack": 4, "sputter": 4,
+    "oreleech": 3, "sentinel": 3, "broodsac": 3, "magmaling": 3, "glowfly": 3,
+    "geyser": 3, "sinkhole": 3, "magnetnode": 3,
+    # Ragged by design: these mirror UPGRADES[].max in src/progress.js.
+    "upgdrill": 5, "upgtank": 5, "upghull": 5, "upgscan": 3,
+    "upgthrust": 4, "upgheat": 4, "upgcargo": 4,
+    "crest": 4, "bubble": 4, "splash": 4, "ember": 4, "drip": 4, "crust": 4,
+    "fracture": 4, "rubblefall": 4, "boulderfall": 4, "tunnelcave": 4,
+    "magmaburst": 4, "quakedust": 4, "shockwave": 4, "shaftfail": 4,
+    "coredet": 4, "dustsettle": 4,
+    # Sheet 16: four variants a row, not four frames of motion.
+    "roots": 4, "scrap": 4, "fossil": 4, "mining": 4, "stalactite": 4,
+    "mushroom": 4, "spore": 4, "crystalform": 4, "obelisk": 4, "ventrock": 4,
 }
 
 
@@ -105,6 +127,38 @@ def finish(img, target):
     return rgb
 
 
+# Sheets whose cells are separate objects rather than frames of one motion. The
+# ink splitter cuts these a little late and each cell ends up carrying a narrow
+# sliver of its neighbour down the right edge, which on an icon reads as a
+# second object glued to the first. Animation rows must never be trimmed this
+# way -- a cycle legitimately has frames where the subject is off to one side,
+# and cropping per frame would make it jitter.
+TRIM_SHEETS = {"alien_digger_13_upgrades"}
+
+
+def isolate(cell):
+    """Keep the widest run of inked columns, dropping slivers across a clear gap."""
+    alpha = cell.getchannel("A")
+    w, h = cell.size
+    cols = [any(alpha.getpixel((x, y)) > 8 for y in range(h)) for x in range(w)]
+    runs, start = [], None
+    for x, inked in enumerate(cols + [False]):
+        if inked and start is None:
+            start = x
+        elif not inked and start is not None:
+            runs.append((start, x))
+            start = None
+    if len(runs) < 2:
+        return cell
+    a0, a1 = max(runs, key=lambda r: r[1] - r[0])
+    # Only trim when what is left over really is a sliver, so a legitimately
+    # two-part object is never cut in half.
+    biggest = a1 - a0
+    if all((r[1] - r[0]) <= biggest * 0.45 for r in runs if r != (a0, a1)):
+        return cell.crop((a0, 0, a1, h))
+    return cell
+
+
 def main():
     atlas = json.loads((ART / "atlas.json").read_text())
     out_atlas = {}
@@ -135,6 +189,8 @@ def main():
                 cell = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
                 cell.paste(src.crop((r["x"], r["y"], r["x"] + r["w"], r["y"] + r["h"])),
                            ((cw - r["w"]) // 2, ch - r["h"]))
+                if sheet in TRIM_SHEETS:
+                    cell = isolate(cell)
                 name = f"{row}_{i:02d}.png"
                 finish(cell, box).save(dest / name)
                 out_frames.append(f"game/{sheet}/{name}")

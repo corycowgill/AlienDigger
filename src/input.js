@@ -11,6 +11,7 @@ const MAP = {
   KeyE: 'plant', KeyR: 'restart', Space: 'plant', KeyM: 'mute',
   KeyH: 'help', Slash: 'help',
   KeyF: 'fire', KeyQ: 'fire', KeyJ: 'fire',
+  KeyG: 'dump',
 };
 
 // Order matters only when two directions are held at once.
@@ -26,6 +27,7 @@ const PAD_BUTTONS = {
   3: 'restart',    // Y
   2: 'help',       // X
   4: 'mute',       // LB
+  5: 'dump',       // RB
   7: 'fire',       // RT
   9: 'restart',    // Start / Menu
   12: 'up',

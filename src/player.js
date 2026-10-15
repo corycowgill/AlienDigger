@@ -45,6 +45,7 @@ export function createPlayer(levels) {
     boost: 0,        // drill-chip overdrive, seconds remaining
     shield: 0,       // shield-battery cover, seconds remaining
     minerals: [0, 0, 0, 0, 0],
+    spilled: null,   // ore the bay had no room for, for the HUD to report
     charges: 3,
     planted: 0,
     frame: 0,
@@ -67,6 +68,70 @@ const DELTA = {
 // cross. Without this, cutting a staircase would be a strictly cheaper way down
 // than a straight shaft and nobody would ever dig straight again.
 const DIAG = Math.SQRT2;
+
+// ------------------------------------------------------------------- cargo
+// The bay holds a fixed number of units and every tier takes one slot, so what
+// a slot is worth is entirely which ore is in it. That is the whole decision:
+// a full bay passing a pulse crystal is a choice to dump copper, detour back
+// later, or leave 50 credits in the rock.
+//
+// Tier-weighted space was the other option and it reads worse -- it makes the
+// rare ore both rarer and bulkier, which punishes the find twice and turns the
+// arithmetic into something you do rather than something you feel.
+
+export function cargoUsed(p) {
+  let n = 0;
+  for (let i = 0; i < p.minerals.length; i++) n += p.minerals[i];
+  return n;
+}
+
+export function cargoRoom(p) {
+  return Math.max(0, p.stats.cargoCap - cargoUsed(p));
+}
+
+// Stow what fits and leave the rest lying in the tile it came out of. Nothing
+// is ever destroyed by a full bay: ore you could not carry stays exactly where
+// you found it, which is what makes "come back for it on the climb" real rather
+// than a consolation.
+export function stowOre(p, world, tier, count, x, y) {
+  if (tier < 0 || count <= 0) return { kept: 0, left: 0 };
+  const kept = Math.min(count, cargoRoom(p));
+  if (kept > 0) p.minerals[tier] += kept;
+  const left = count - kept;
+  if (left > 0) {
+    world.drop(x, y, tier, left);
+    p.spilled = { tier, count: left, x, y };
+  }
+  return { kept, left };
+}
+
+// Jettison one unit of the cheapest ore aboard. It prefers the tile behind the
+// drill over the one underfoot, which is what lets a full bay swap a copper for
+// the crystal it is parked on in a single press -- dropping it underfoot would
+// hand the same copper straight back on the next frame.
+//
+// Behind is usually the shaft you just came down, but not always: approach a
+// pile sideways, or let a tremor seal the way back, and it is solid rock. So
+// every neighbour is tried before the tile underfoot, because a full bay that
+// cannot dump is a full bay that cannot choose, and the choice is the mechanic.
+// Underfoot is last rather than never: in a one-tile pocket it is all there is.
+// Returns { tier, x, y }, or 'empty' / 'blocked'.
+export function dumpOre(p, world) {
+  if (p.dead) return 'empty';
+  const tier = p.minerals.findIndex((n) => n > 0);
+  if (tier < 0) return 'empty';
+  const [dx, dy] = DELTA[p.facing] || DELTA.down;
+  const spots = [[p.tx - dx, p.ty - dy]];
+  for (const [ax, ay] of Object.values(DELTA)) spots.push([p.tx + ax, p.ty + ay]);
+  spots.push([p.tx, p.ty]);
+  for (const [x, y] of spots) {
+    if (world.drop(x, y, tier, 1)) {
+      p.minerals[tier]--;
+      return { tier, x, y };
+    }
+  }
+  return 'blocked';
+}
 
 export function updatePlayer(p, world, input, dt, fx) {
   p.invuln = Math.max(0, p.invuln - dt);
@@ -142,10 +207,10 @@ export function updatePlayer(p, world, input, dt, fx) {
     }
 
     if (p.drillProgress >= world.hardness(nx, ny) * (diag ? DIAG : 1)) {
-      const ore = world.dig(nx, ny);
-      if (ore >= 0) {
-        p.minerals[ore]++;
-        fx.spawn('sparkle', nx * TILE + TILE / 2, ny * TILE + TILE / 2);
+      const { tier, count } = world.dig(nx, ny);
+      if (tier >= 0) {
+        const { kept } = stowOre(p, world, tier, count, nx, ny);
+        if (kept > 0) fx.spawn('sparkle', nx * TILE + TILE / 2, ny * TILE + TILE / 2);
       }
       fx.spawn('dustpuff', nx * TILE + TILE / 2, ny * TILE + TILE / 2);
       p.drillProgress = 0;
@@ -190,10 +255,17 @@ export function updatePlayer(p, world, input, dt, fx) {
 // upgrades buy the rest of the margin back rather than starting with it.
 export function damage(p, amount, fx) {
   if (p.invuln > 0 || p.dead) return false;
-  if (p.shield > 0) { p.invuln = 0.4; return false; }
+  if (p.shield > 0) {
+    p.invuln = 0.4;
+    if (fx) fx.spawn('shieldwrap', p.px + TILE / 2, p.py + TILE / 2);
+    return false;
+  }
   p.hull -= amount;
   p.invuln = 0.75;
-  if (fx) fx.spawn('shieldhit', p.px + TILE / 2, p.py + TILE / 2);
+  // Two different events, two different sprites. A shield eating a hit and a
+  // hull taking one used to draw the same frames, which is exactly the moment
+  // the player most needs to know which of the two just happened.
+  if (fx) fx.spawn('hullcrack', p.px + TILE / 2, p.py + TILE / 2);
   if (p.hull <= 0) { p.hull = 0; p.dead = true; }
   return true;
 }

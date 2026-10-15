@@ -18,7 +18,8 @@ python -m http.server 8765
 ```
 
 **Keyboard** — `WASD` / arrow keys to drill, `E` to plant a charge, `F` (or `Q`)
-to fire the laser, `R` to restart.
+to fire the laser, `G` to dump the cheapest ore aboard (hold to repeat), `R` to
+restart.
 Hold two directions to cut a diagonal: it costs √2 as much to drill and to
 cross, so a staircase is never a cheaper way straight down, only a cheaper way
 sideways.
@@ -27,7 +28,8 @@ sideways.
 is picked up automatically: left stick or d-pad to drill, **A** to plant and to
 install upgrades, **Y** or **Start** to restart and to launch. Browsers only
 expose a pad after its first button press, so press something to wake it. A
-connected pad hides the touch controls. **B** or **RT** fires the laser.
+connected pad hides the touch controls. **B** or **RT** fires the laser, **RB**
+dumps ore.
 
 **Touch** — an eight-way d-pad and buttons appear automatically on touch devices.
 The corners hold two directions at once, so a diagonal takes one thumb rather
@@ -37,6 +39,14 @@ picture above the controls instead of overlaying them.
 `tools/mobile.html` renders the game in iframes at four real phone viewports,
 which is the only way to see the touch layout without a phone: `window.resizeTo`
 is a no-op on a maximised desktop browser, and `?touch` forces the layout on.
+
+**Music** — a generative score, not a loop and not a file: the same oscillators
+everything else uses, reading the run as it goes. Depth drives tempo and
+density, so the surface is a bare bassline and the magma layer is three times as
+busy; arming the charges switches it to the escape figure, about five times the
+note rate of the surface. Four bars of D minor underneath -- i, VI, III, VII --
+which is enough harmony to sit under a game for twenty minutes without
+announcing itself. It has its own bus well under the effects.
 
 **Sound** — `M`, **LB**, or the SOUND button toggles it; the choice persists.
 Two detuned low oscillators drone under everything, and the filter closes as you
@@ -56,8 +66,8 @@ Add `?dev` to the URL for `dev.warp(depth)` and `dev.refuel()` in the console.
 
 Minerals are banked as credits when a run ends -- the full haul if the planet
 cracked, a 40% salvage if the drill did -- and spent at **the Foundry** between
-runs on six upgrades: drill bit, fuel tank, hull plating, scanner, thrusters and
-cargo bay. Credits and levels persist in `localStorage`.
+runs on seven upgrades: drill bit, fuel tank, hull plating, scanner, thrusters,
+heat sinks and cargo bay. Credits and levels persist in `localStorage`.
 
 Planets get harder as you crack them: tougher rock, busier caves, a tighter
 climb out -- and a bigger payout, so the risk is chosen rather than imposed.
@@ -65,9 +75,12 @@ Upgrades outpace that for a while and then the escalation catches back up, so a
 maxed drill on planet 15 is still a real run.
 
 The base game is tuned so a fresh save is hard: simulated, competent play clears
-about two runs in three and a careless straight dig about one in twelve. Upgrades
-buy the margin back rather than starting with it -- a part-kitted drill clears
-~93%, and by then even careless play gets through more often than not.
+about two runs in three, and a careless straight dig never gets out at all --
+it runs the tank dry around 145m, on every seed tried. Upgrades buy the margin
+back rather than starting with it: at `drill=2,tank=2,hull=2` competent play
+clears 37/40, and the straight dig starts surviving occasionally rather than
+never. (The last two numbers used to read "one in twelve" and "more often than
+not"; both were measured before the laser landed and neither survived it.)
 
 ## How it plays
 
@@ -87,9 +100,25 @@ burns it slowly, and running dry starts eating your hull. Fuel cells and repair
 kits are scattered through the caves, so the descent is a supply problem as much
 as a dig.
 
-Once the charges are armed the way out stops being the way in: tremors drop
-rubble into the shaft above you. It cuts easily, but the clock is running, so
-the climb is something you play rather than hold a key through.
+Once the charges are armed the way out stops being the way in. The core floods
+and the lava climbs the shaft behind you, tremors drop rubble into the shaft
+above you, and the tremors close in as the clock runs down -- more often, and
+more of it each time, so the last fifteen seconds are a different game from the
+first fifteen.
+
+The flood is pinned to the same clock as the countdown: it reaches the surface
+exactly as the timer hits zero, after a short head start so that planting the
+third charge does not drown you where you stand. So it can never lose a run the
+clock would have won, and the two can never disagree about how long is left.
+What it adds is that the deadline is now something you can *see*. A number in
+the HUD can tell you thirty seconds remain; it cannot tell you that thirty
+seconds is not enough for the rubble plug directly above you. The lava can,
+because it is right there, and it is closer than it was. Measured across 40
+runs, a competent climb keeps the surface about ten tiles below it the whole way
+up -- close enough to read, far enough to survive. It cuts easily, but the clock is running, so
+the climb is something you play rather than hold a key through -- and the ore a
+full bay made you leave behind is lying along it, which is the other reason the
+way out is not just the way in backwards.
 
 Heat is the other clock. Deep rock heats the bit and a redline eats your hull,
 but it sheds fast the moment you stop cutting -- so the deep game is paced, not
@@ -100,6 +129,35 @@ fungal caverns, crystal, magma — and both the ore and the danger get richer wi
 depth. Aliens chase when you get close; hazards hit when you share their tile.
 Ramming is the main offence and it hurts you too, which makes the Core
 Guardian something to dodge rather than fight.
+
+## The cargo bay
+
+The hold is finite -- 16 slots on a fresh save, 32 with the bay maxed -- and
+every ore takes one slot whatever it is worth. So the slot is the currency, and
+what is in it is the decision: a full bay passing a pulse crystal is a choice to
+dump a copper, come back for it later, or leave 50 credits in the rock. `G` (or
+**RB**, or DUMP) sheds the cheapest tier aboard into the tile *behind* the
+drill, which is what makes the swap one press rather than two -- parked on a
+find with a full hold, the copper goes out the back and the crystal comes
+aboard the same frame.
+
+Nothing a full bay cannot take is ever destroyed. It stays lying in the tile it
+came out of, drawn as a refined gem rather than ore in rock, and it is still
+there on the way back up -- so the climb stops being a pure retrace and becomes
+a collection route you laid down yourself on the way in. Tremors during the
+escape bury those piles rather than deleting them: the ore is still yours, it
+just costs seconds you do not have to cut it back out.
+
+The limit is deliberately sized to bind on greed and never on caution. A
+straight shaft down the spawn column frees about 8 ore and the fuel-first
+descent about 9, so neither comes near 16 slots; a descent that detours for
+veins fills it on roughly two runs in five, and banks 70% more for doing so. The
+player who ignored the ore never meets the mechanic, which is the point -- it is
+a tax on nobody and a decision for anyone who went looking. Maxing the bay eases
+that choice rather than ending it: at 32 slots a hard-prospecting run still
+fills up about one time in twenty. The first cut gave 7 slots a level instead of
+4, which retired the decision entirely by level 2 -- a mechanic that only exists
+on a fresh save is not a mechanic.
 
 ## The laser
 
@@ -115,6 +173,50 @@ heat into the bit and costs a little fuel. It refuses to fire at all once the
 bit is above 76 heat, so it trades against drilling rather than replacing it. A
 gauge under the charges reads READY, charging, or HOT, and a refused shot says
 why over the drill.
+
+## Reading the aliens
+
+Every alien has an answer, and they are different answers -- before this the
+five behaviours all resolved to the same two verbs, so the AI carried
+distinctions the player's decisions did not.
+
+- A **rock crab**'s shell only covers the way it faces. Meeting one head-on in a
+  corridor costs double; its flank and its back are bare. The plate is drawn on
+  the side it actually covers, and the sprite mirrors to its heading.
+- A **spitter** opens up for 1.1s after it fires and takes 60% more while it
+  vents. It holds its ground whenever it has a clear line, so the answer is to
+  eat the shot and close, rather than to route around it forever.
+- A **lurker** coils for about half a second before it bolts. It hits harder
+  than anything but the boss and used to give no warning at all, which made it a
+  tax on walking past rather than something to react to.
+- A **grubworm** arrives through the wall, and the **Guardian**'s plating is a
+  phase rather than a direction -- no approach angle beats it, so it still has
+  to be caught open.
+
+Five more kinds joined them, each for an answer the first five did not have. An
+**ore leech** robs the cargo bay rather than the hull -- the only enemy whose
+damage is counted in credits -- and carries what it took until something kills
+it, at which point the haul drops on the floor. A **sentinel** is rooted into
+the rock and never takes a step, so it is a place to route around rather than
+something that comes to you. A **broodsac** bursts into swarmlets when killed,
+which makes killing it at range the whole point. A **magmaling** is fast and
+lives where the flood comes from. A **glowfly** passes through any rock at all,
+so it is the one thing you cannot wall out.
+
+Three new hazards came with them: a **geyser** is only dangerous while it is
+firing and its three frames are the tell, a **sinkhole** drops you several tiles
+so it costs climbing rather than hull, and a **magnet node** is the only hazard
+that closes the distance, dragging the drill onto itself from one tile away.
+
+Adding them made the game measurably *easier*, which was not obvious up front:
+new kinds share the spawn budget rather than adding to it, so a softer kind
+displaces a lurker instead of joining it. Competent play went from 27/40 to
+31/40 on variety alone. The alien spawn rate went from 0.030 to 0.032 to put it
+back on two runs in three.
+
+The ram and the laser resolve through one function, so they can never disagree
+about what lands: the ram passes the reverse of the drill's heading, the beam
+the reverse of its travel.
 
 ## Layout
 
@@ -213,12 +315,39 @@ several times a second.
 ## Balance tooling
 
 ```bash
-node tools/sim.mjs 60                  # whole descents, headless, two policies
+node tools/sim.mjs 60                  # whole descents, headless, three policies
 node tools/sim.mjs 60 drill=2,hull=2   # ... at a given upgrade level
 node tools/sim.mjs 60 drill=5 9        # ... on the 10th planet
+node tools/sim.mjs 60 detour=9         # ... prospecting further off the shaft
 node tools/supply.mjs 200              # is the deep game still supplyable?
 node tools/census.mjs 20               # what a generated world actually contains
 ```
+
+The three policies are ascending greed: `beeline` digs straight down and ignores
+everything, `greedy` manages fuel, hull and heat but walks past every vein in the
+world, and `prospector` also detours for ore up to `detour` tiles off its shaft.
+The third one exists because the first two free about nine ore in a whole run and
+so never fill a sixteen-slot bay -- measuring the cargo limit against them would
+have reported, correctly but uselessly, that it does nothing.
+
+How far it is worth straying, at 40 runs a row:
+
+| detour | escaped | bay filled | banked |
+|---|---|---|---|
+| none (`greedy`) | 27/40 | 4/40 | 144 CR |
+| 4 tiles | 24/40 | 10/40 | 190 CR |
+| 6 tiles | 21/40 | 18/40 | 224 CR |
+| 9 tiles | 10/40 | 32/40 | 209 CR |
+| 13 tiles | 0/40 | 35/40 | 165 CR |
+
+Banked credits climb and then collapse, which is the shape the detour is
+supposed to have: six tiles off the shaft is the peak at +56% money, nine is
+strictly worse than six, and thirteen loses every run to the clock. Greed costs
+about fifteen points of win rate at the peak, which is the price it should carry
+-- before the collapse escalated it cost almost nothing, so detouring was a
+no-brainer rather than a decision. The `beeline` and `greedy` rows never fill
+the bay at all, which is the other half of the tuning: a player who did not go
+looking for ore never meets the limit.
 
 `tools/statesheet.js` is the visual counterpart: load the game with `?dev` and
 run

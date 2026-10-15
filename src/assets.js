@@ -13,7 +13,20 @@ const SHEETS = {
   props: 'alien_digger_08_charges_props',
   boss: 'alien_digger_11_guardian_states',
   diag: 'alien_digger_12_drill_diagonals',
+  heat: 'alien_digger_14_heat_laser',
+  collapse: 'alien_digger_15_collapse',
+  lava: 'alien_digger_18_lava',
+  upg: 'alien_digger_13_upgrades',
+  decor: 'alien_digger_16_cavern_decor',
+  extra: 'alien_digger_19_enemies',
 };
+
+// Sheet 19 carries both creatures and hazards. They are folded into the two
+// namespaces the originals already live in, so every lookup in the game stays
+// anim.aliens[kind.row] and anim.hazards[kind.row] and no call site has to know
+// which sheet a kind happened to be drawn on.
+const EXTRA_ALIENS = ['oreleech', 'sentinel', 'broodsac', 'magmaling', 'glowfly'];
+const EXTRA_HAZARDS = ['geyser', 'sinkhole', 'magnetnode'];
 const TILES = 'alien_digger_03_terrain_tiles';
 const BG_SHEET = 'alien_digger_10_backgrounds';
 const UI_SHEET = 'alien_digger_09_ui_kit';
@@ -63,6 +76,9 @@ export async function loadAssets(onProgress) {
     const name = file.split('/').pop().replace(/^bg_|\.png$/g, '');
     jobs.push(load(ART + file).then((img) => { bg[name] = img; }));
   });
+
+  for (const row of EXTRA_ALIENS) if (anim.extra?.[row]) anim.aliens[row] = anim.extra[row];
+  for (const row of EXTRA_HAZARDS) if (anim.extra?.[row]) anim.hazards[row] = anim.extra[row];
 
   let logo = null;
   jobs.push(load(ART + atlas[UI_SHEET].logo).then((img) => { logo = img; }));

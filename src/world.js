@@ -61,6 +61,11 @@ export class World {
     this.tiles = new Int8Array(W * D);      // strata row, or EMPTY
     this.variant = new Uint8Array(W * D);
     this.ore = new Int8Array(W * D).fill(-1);   // index into the ore row
+    // Units of ore in the tile. A natural vein tile holds exactly one; an open
+    // tile holds however much has been dropped there, because a full cargo bay
+    // has to put what it cannot carry somewhere and the climb out runs back
+    // through every tile the descent dug.
+    this.oreCount = new Uint8Array(W * D);
     this.hp = new Float32Array(W * D);          // drill progress per tile
 
     const cave = smoothNoise(rand, W, D, 7);
@@ -122,6 +127,7 @@ export class World {
         // copper the rarest, inverting both the rarity ladder and the scoring.
         const cap = Math.min(3, Math.floor((y / D) * 5));
         this.ore[i] = Math.floor(Math.pow(rand(), 2.4) * (cap + 1));
+        this.oreCount[i] = 1;
       }
     }
 
@@ -145,6 +151,7 @@ export class World {
         const i = y * W + x;
         if (x > 0 && x < W - 1 && y > 3 && y < D && this.tiles[i] !== EMPTY) {
           this.ore[i] = tier;
+          this.oreCount[i] = 1;
           placed++;
         }
         x += Math.floor(rand() * 3) - 1;
@@ -178,24 +185,67 @@ export class World {
 
   // Collapse an open tile back to rubble: soft to cut, but it is in the way.
   // Used by the tremors that run once the charges are armed.
+  // Ore lying in the tile is buried rather than destroyed -- a tremor dropping
+  // rubble over the pile you deliberately left behind should cost you the
+  // seconds to cut it back out, not the haul.
   collapse(x, y) {
     if (!this.inBounds(x, y)) return false;
     const i = this.idx(x, y);
     if (this.tiles[i] !== EMPTY) return false;
     this.tiles[i] = strataAt(y).row;
     this.hp[i] = 0.45;
-    this.ore[i] = -1;
     this.dirty.push(x, y);
     return true;
   }
 
-  // Returns the ore tier freed by the dig, or -1.
+  // Tier of the loose ore lying in an open tile, or -1. Ore still sealed in
+  // rock does not count: it has to be cut out first.
+  looseAt(x, y) {
+    if (!this.inBounds(x, y)) return -1;
+    const i = this.idx(x, y);
+    return this.tiles[i] === EMPTY ? this.ore[i] : -1;
+  }
+
+  // Leave ore lying on open ground. One tier per tile, so a pile is always
+  // legible at a glance rather than an unreadable mixed heap. Returns how many
+  // units actually landed.
+  drop(x, y, tier, n = 1) {
+    if (tier < 0 || n <= 0 || !this.inBounds(x, y)) return 0;
+    const i = this.idx(x, y);
+    if (this.tiles[i] !== EMPTY) return 0;
+    const have = this.ore[i] === tier ? this.oreCount[i] : this.ore[i] >= 0 ? -1 : 0;
+    if (have < 0) return 0;                       // a different tier is already here
+    const put = Math.min(n, 99 - have);
+    if (put <= 0) return 0;
+    this.ore[i] = tier;
+    this.oreCount[i] = have + put;
+    this.dirty.push(x, y);
+    return put;
+  }
+
+  // Lift up to n units of loose ore out of an open tile. Returns how many came.
+  take(x, y, n) {
+    if (n <= 0 || this.looseAt(x, y) < 0) return 0;
+    const i = this.idx(x, y);
+    const got = Math.min(n, Math.max(1, this.oreCount[i]));
+    const left = Math.max(0, this.oreCount[i] - got);
+    this.oreCount[i] = left;
+    if (left === 0) this.ore[i] = -1;
+    this.dirty.push(x, y);
+    return got;
+  }
+
+  // Returns { tier, count } for the ore freed by the dig; tier is -1 for none.
+  // The count matters because a tile can hold a dropped pile, not just the one
+  // unit a natural vein tile carries.
   dig(x, y) {
     const i = this.idx(x, y);
     this.tiles[i] = EMPTY;
     this.dirty.push(x, y);
-    const ore = this.ore[i];
+    const tier = this.ore[i];
+    const count = tier >= 0 ? Math.max(1, this.oreCount[i]) : 0;
     this.ore[i] = -1;
-    return ore;
+    this.oreCount[i] = 0;
+    return { tier, count };
   }
 }

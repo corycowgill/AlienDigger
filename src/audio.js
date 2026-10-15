@@ -18,6 +18,11 @@ export function createAudio() {
   let alarmOn = false;
   let alarmT = 0;
   let noiseBuf = null;
+  let musicGain = null;
+  let musicStep = 0;
+  let musicNext = 0;        // audio-clock time of the next sixteenth
+  let intensity = 0;        // 0..1, driven by depth
+  let escapeMode = false;
 
   let muted = false;
   try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch { /* blocked storage */ }
@@ -85,7 +90,107 @@ export function createAudio() {
     for (const o of droneOscs) { o.connect(droneFilter); o.start(); }
     droneFilter.connect(droneGain).connect(master);
 
+    // Music gets its own bus so it can sit well under the effects. It is the
+    // only thing here that plays continuously whether or not anything is
+    // happening, so it has to be the quietest thing in the mix.
+    musicGain = ctx.createGain();
+    musicGain.gain.value = 0.34;
+    musicGain.connect(master);
+
     return true;
+  }
+
+  // -------------------------------------------------------------------- music
+  // A generative score rather than a loop. There is no audio file to download,
+  // so the music is built from the same oscillators as every other sound, and
+  // because it is generated it can read the run instead of repeating: depth
+  // drives tempo and density, and arming the charges switches it to the escape
+  // figure. Four bars of D minor -- i, VI, III, VII -- which is enough harmony
+  // to sit under a game for twenty minutes without announcing itself.
+  const PROG = [
+    { root: 73.42, third: 87.31, fifth: 110.00 },   // Dm   D  F  A
+    { root: 58.27, third: 73.42, fifth: 87.31 },    // Bb   Bb D  F
+    { root: 87.31, third: 110.00, fifth: 130.81 },  // F    F  A  C
+    { root: 65.41, third: 82.41, fifth: 98.00 },    // C    C  E  G
+  ];
+  const BPM_CALM = 84, BPM_DEEP = 116, BPM_RUN = 148;
+  const LOOKAHEAD = 0.25;   // seconds of notes queued ahead of the clock
+
+  function mvoice(freq, dur, peak, type, at) {
+    const o = ctx.createOscillator();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, at);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(peak, at + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(g).connect(musicGain);
+    o.start(at);
+    o.stop(at + dur + 0.02);
+  }
+
+  function mperc(at, peak, freq) {
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuf;
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = freq;
+    f.Q.value = 1.2;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(peak, at);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.09);
+    src.connect(f).connect(g).connect(musicGain);
+    src.start(at);
+    src.stop(at + 0.12);
+  }
+
+  function playStep(i, at, dur) {
+    const chord = PROG[(i >> 4) & 3];
+    const s = i & 15;
+    const lvl = escapeMode ? 1 : intensity;
+
+    // The spine. Always there, so even the surface has something underfoot.
+    if (s === 0 || s === 6 || s === 11) {
+      mvoice(chord.root, dur * (s === 0 ? 5 : 3), 0.16, 'triangle', at);
+    }
+    // A held fifth that swells with depth.
+    if (s === 0) mvoice(chord.fifth / 2, dur * 14, 0.05 + lvl * 0.05, 'sawtooth', at);
+
+    // Lead: silent near the surface, busier the deeper it gets, so the music
+    // thickens on the way down without ever being announced.
+    if (lvl > 0.22 && (s === 0 || s === 4 || s === 7 || s === 10 || s === 14)) {
+      const pick = [chord.third, chord.fifth, chord.root * 2, chord.fifth][(i >> 1) & 3];
+      mvoice(pick * 2, dur * 2.2, 0.05 + lvl * 0.03, 'square', at);
+    }
+
+    // Percussion only once the world is heavy.
+    if (lvl > 0.42 && (s === 4 || s === 12)) mperc(at, 0.09 + lvl * 0.05, 1800);
+
+    // Escape: a driving pulse and an urgent semitone figure over the top. The
+    // alarm is already beeping, so this leans on rhythm rather than pitch.
+    if (escapeMode) {
+      if (s % 2 === 0) mperc(at, 0.06, 3200);
+      if (s === 2 || s === 9) mvoice(chord.root * 4 * (s === 2 ? 1 : 1.06), dur * 1.6, 0.07, 'square', at);
+    }
+  }
+
+  // Queues whatever falls inside the lookahead window. Scheduling against the
+  // audio clock rather than the frame clock is what keeps the pulse steady when
+  // a frame runs long -- and the whole file already learned that lesson once,
+  // when the escape alarm drifted on a setInterval.
+  function scheduleMusic() {
+    if (!ctx || !musicGain) return;
+    const bpm = escapeMode ? BPM_RUN : BPM_CALM + (BPM_DEEP - BPM_CALM) * intensity;
+    const dur = 60 / bpm / 4;
+    const now = ctx.currentTime;
+    // A backgrounded tab suspends the clock; catching up by playing every
+    // missed note at once would be a burst of noise, so the cursor resets.
+    if (musicNext < now) musicNext = now + 0.05;
+    while (musicNext < now + LOOKAHEAD) {
+      if (!muted) playStep(musicStep, musicNext, dur);
+      musicNext += dur;
+      musicStep = (musicStep + 1) & 63;
+    }
   }
 
   function noise(dur, freq, peak, type = 'lowpass') {
@@ -154,6 +259,11 @@ export function createAudio() {
       if (!ensure() || !droneGain) return;
       const t = ctx.currentTime;
       const d = Math.max(0, Math.min(1, depth));
+      // The music reads the same two numbers the drone does, so it needs no
+      // call sites of its own -- the game already tells us how deep it is and
+      // whether the charges are armed.
+      intensity = d;
+      escapeMode = !!escaping;
       droneGain.gain.setTargetAtTime(0.055 + d * 0.07, t, 0.6);
       droneFilter.frequency.setTargetAtTime(320 - d * 190, t, 0.6);
       // the planet is armed and unhappy about it
@@ -162,6 +272,9 @@ export function createAudio() {
     },
 
     breakTile(hardness = 1) { noise(0.16, 900 - hardness * 180, 0.36); },
+    // Ore going over the side: a dull thud, deliberately unmusical, so it can
+    // never be mistaken for the chime that means ore coming aboard.
+    dump() { noise(0.14, 420, 0.26); tone(150, 0.13, 0.15, 'triangle', 90); },
     // Pitch climbs with the tier, and the top two get a third note, so a pulse
     // crystal sounds like a find and copper sounds like copper.
     ore(tier = 0) {
@@ -190,12 +303,21 @@ export function createAudio() {
 
     // Called once a frame with the frame's delta.
     tick(dt) {
+      scheduleMusic();
       if (!alarmOn) return;
       alarmT -= dt;
       if (alarmT <= 0) {
         alarmT = 0.9;
         tone(620, 0.09, 0.15, 'square');
       }
+    },
+
+    // Quietens the score without stopping it, for the title and the Foundry --
+    // places where the player is reading rather than playing.
+    musicCalm(calm) {
+      if (!ensure() || !musicGain) return;
+      musicGain.gain.setTargetAtTime(calm ? 0.2 : 0.34, ctx.currentTime, 0.4);
+      if (calm) { intensity = 0; escapeMode = false; }
     },
 
     // Rubble coming down is not the player being hit, and it was borrowing the

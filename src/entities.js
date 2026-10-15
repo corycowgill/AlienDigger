@@ -74,6 +74,27 @@ export const HAZARD_KINDS = [
   { row: 'magnetnode',   dmg: 14, from: 70, pull: true },
 ];
 
+// What a thing is made of, which is what decides how it comes apart. Keyed by
+// material rather than by species: ten kinds times a bespoke death would be a
+// sheet nobody wants to draw, and at forty pixels a crab and a sentinel
+// shattering look like the same event anyway -- because they are.
+export const DEATH_OF = {
+  grubworm: 'deathgoo',   rockcrab: 'deathchitin', spitter: 'deathgoo',
+  swarmlet: 'deathspore', lurker: 'deathgoo',      oreleech: 'deathgoo',
+  sentinel: 'deathmachine', broodsac: 'deathgoo',  magmaling: 'deathember',
+  glowfly: 'deathspore',
+};
+
+// The flinch, for the same reason: a shell skids a hit off, flesh recoils.
+export function staggerOf(a) {
+  return a.kind.armor ? 'staggerarmour' : 'staggersoft';
+}
+
+// The mark left behind, so a cleared tunnel shows it was fought through.
+export const SCORCH_FOR = {
+  deathgoo: 0, deathchitin: 1, deathember: 2, deathmachine: 3, deathspore: 4,
+};
+
 // A geyser spends two thirds of its cycle inert. Everything else is always on.
 export function hazardArmed(h) {
   if (!h.kind.duty) return true;

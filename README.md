@@ -214,6 +214,15 @@ displaces a lurker instead of joining it. Competent play went from 27/40 to
 31/40 on variety alone. The alien spawn rate went from 0.030 to 0.032 to put it
 back on two runs in three.
 
+Things come apart according to what they are made of, rather than all dying as
+the same puff of debris: flesh ruptures, shell shatters, a magma creature guts
+out to cinders, a machine arcs and buckles, and a spore sac pops into a cloud
+that thins away. Each leaves a mark, so a tunnel you fought through looks
+fought through. Keyed by material rather than by species -- ten kinds times a
+bespoke death would be a sheet nobody wants to draw, and at forty pixels a crab
+and a sentinel shattering are the same event. A check fails if any kind ships
+without a death behind it.
+
 The ram and the laser resolve through one function, so they can never disagree
 about what lands: the ram passes the reverse of the drill's heading, the beam
 the reverse of its travel.

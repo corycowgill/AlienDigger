@@ -580,6 +580,90 @@
       }
     }
   },
+  "alien_digger_17_reactions": {
+    "animations": {
+      "staggersoft": {
+        "frames": [
+          "game/alien_digger_17_reactions/staggersoft_00.png",
+          "game/alien_digger_17_reactions/staggersoft_01.png",
+          "game/alien_digger_17_reactions/staggersoft_02.png",
+          "game/alien_digger_17_reactions/staggersoft_03.png",
+          "game/alien_digger_17_reactions/staggersoft_04.png"
+        ],
+        "count": 5
+      },
+      "staggerarmour": {
+        "frames": [
+          "game/alien_digger_17_reactions/staggerarmour_00.png",
+          "game/alien_digger_17_reactions/staggerarmour_01.png",
+          "game/alien_digger_17_reactions/staggerarmour_02.png",
+          "game/alien_digger_17_reactions/staggerarmour_03.png",
+          "game/alien_digger_17_reactions/staggerarmour_04.png"
+        ],
+        "count": 5
+      },
+      "deathgoo": {
+        "frames": [
+          "game/alien_digger_17_reactions/deathgoo_00.png",
+          "game/alien_digger_17_reactions/deathgoo_01.png",
+          "game/alien_digger_17_reactions/deathgoo_02.png",
+          "game/alien_digger_17_reactions/deathgoo_03.png",
+          "game/alien_digger_17_reactions/deathgoo_04.png"
+        ],
+        "count": 5
+      },
+      "deathchitin": {
+        "frames": [
+          "game/alien_digger_17_reactions/deathchitin_00.png",
+          "game/alien_digger_17_reactions/deathchitin_01.png",
+          "game/alien_digger_17_reactions/deathchitin_02.png",
+          "game/alien_digger_17_reactions/deathchitin_03.png",
+          "game/alien_digger_17_reactions/deathchitin_04.png"
+        ],
+        "count": 5
+      },
+      "deathember": {
+        "frames": [
+          "game/alien_digger_17_reactions/deathember_00.png",
+          "game/alien_digger_17_reactions/deathember_01.png",
+          "game/alien_digger_17_reactions/deathember_02.png",
+          "game/alien_digger_17_reactions/deathember_03.png",
+          "game/alien_digger_17_reactions/deathember_04.png"
+        ],
+        "count": 5
+      },
+      "deathspore": {
+        "frames": [
+          "game/alien_digger_17_reactions/deathspore_00.png",
+          "game/alien_digger_17_reactions/deathspore_01.png",
+          "game/alien_digger_17_reactions/deathspore_02.png",
+          "game/alien_digger_17_reactions/deathspore_03.png",
+          "game/alien_digger_17_reactions/deathspore_04.png"
+        ],
+        "count": 5
+      },
+      "deathmachine": {
+        "frames": [
+          "game/alien_digger_17_reactions/deathmachine_00.png",
+          "game/alien_digger_17_reactions/deathmachine_01.png",
+          "game/alien_digger_17_reactions/deathmachine_02.png",
+          "game/alien_digger_17_reactions/deathmachine_03.png",
+          "game/alien_digger_17_reactions/deathmachine_04.png"
+        ],
+        "count": 5
+      },
+      "scorch": {
+        "frames": [
+          "game/alien_digger_17_reactions/scorch_00.png",
+          "game/alien_digger_17_reactions/scorch_01.png",
+          "game/alien_digger_17_reactions/scorch_02.png",
+          "game/alien_digger_17_reactions/scorch_03.png",
+          "game/alien_digger_17_reactions/scorch_04.png"
+        ],
+        "count": 5
+      }
+    }
+  },
   "alien_digger_19_enemies": {
     "animations": {
       "oreleech": {

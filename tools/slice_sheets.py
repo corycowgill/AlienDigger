@@ -68,6 +68,13 @@ ROW_NAMES = {
     # four different versions of the same thing, picked per tile from the same
     # noise field the terrain variants use, so decoration clusters the way the
     # rock does instead of scattering.
+    # Sheet 17: reactions, keyed to what a creature is made of rather than to
+    # the species -- ten kinds times a full reaction set would be fifty rows,
+    # and the boss already reads its state from sheet 11.
+    "alien_digger_17_reactions": [
+        "staggersoft", "staggerarmour", "deathgoo", "deathchitin",
+        "deathember", "deathspore", "deathmachine", "scorch",
+    ],
     # Sheet 19: more of the ecosystem. Rows 1-5 are creatures, 6-8 hazards;
     # assets.js folds them into the same two namespaces the originals use.
     "alien_digger_19_enemies": [

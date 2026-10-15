@@ -86,6 +86,32 @@ sheet does) and `COUNTS` regrouped them; sheet 16 cut 10x4 exactly. Re-slicing
 with the new sheets present changed nothing in the existing bundle -- the atlas
 diff was 94 insertions and no deletions.
 
+## When a sheet comes back opaque
+
+Sheet 17 arrived with the transparency checkerboard *drawn into it* -- a fully
+opaque PNG that looks transparent. `slice_sheets.py` correctly refused it: it
+reads alpha to find frames, and an opaque sheet has none.
+
+`tools/dekey_checkerboard.py` recovers these. It does not key by colour, which
+would eat the white highlights and pale plating these sheets are full of. It
+floods inward from the border instead: the checkerboard is one connected
+region, every sprite carries a hard 1px dark outline, and a fill cannot cross
+that outline -- so an enclosed highlight is never reached while the background
+between sprites is. It reports what fraction it flooded and refuses below 15%,
+on the grounds that a real background is never that small.
+
+```bash
+python tools/dekey_checkerboard.py art/fx/sheet.png --check   # report only
+python tools/dekey_checkerboard.py art/fx/sheet.png           # write alpha
+```
+
+Worth asking for wide gutters either way. Sheet 13 cut slightly late and every
+icon picked up a sliver of its neighbour, which on an icon reads as a second
+object glued on; `normalize_frames.py` now trims those for sheets listed in
+`TRIM_SHEETS`, but only for icon sheets -- an animation row legitimately has
+frames where the subject sits off to one side, and cropping per frame would
+make the cycle jitter.
+
 ## Known rough edges
 
 These are AI-generated sheets, so a few frames need a human pass before they ship:

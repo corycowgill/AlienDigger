@@ -14,6 +14,7 @@ export function createFx(assets) {
   // care which sheet a row was cut from.
   const rows = Object.assign(Object.create(null), assets.anim.fx, assets.anim.heat,
                              assets.anim.collapse, assets.anim.lava,
+                             assets.anim.react,
                              { sparkle: assets.anim.minerals.sparkle });
   const pops = [];
 

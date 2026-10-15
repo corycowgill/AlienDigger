@@ -5,7 +5,7 @@ import { loadAssets } from './assets.js';
 import { createInput } from './input.js';
 import { TILE, W, D, CORE_TOP, EMPTY, STRATA, World, rng, strataAt } from './world.js';
 import { createPlayer, updatePlayer, damage, cargoUsed, cargoRoom, stowOre, dumpOre } from './player.js';
-import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup, collectOre, runTremor, TREMOR, COIL_TIME, lavaLevel, lavaBurn, LAVA, leechSteal, dropLoot, splitBrood, hazardArmed } from './entities.js';
+import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup, collectOre, runTremor, TREMOR, COIL_TIME, lavaLevel, lavaBurn, LAVA, leechSteal, dropLoot, splitBrood, hazardArmed, DEATH_OF, staggerOf, SCORCH_FOR } from './entities.js';
 import { updateLaser, laserReady, LASER } from './laser.js';
 import { createFx } from './fx.js';
 import { createFloaters } from './floaters.js';
@@ -894,7 +894,18 @@ const playerFx = {
 
 // Ramming and the laser both kill, and a kill pays the same either way.
 function alienKilled(a) {
-  fx.spawn(a.boss ? 'explosion' : 'debris', a.px + 16, a.py + 16, a.boss ? 2 : 1);
+  // Things now come apart according to what they are made of: flesh ruptures,
+  // shell shatters, a magma creature guts out to cinders, a machine arcs and
+  // buckles. Before this everything in the game died as the same puff of
+  // debris, which quietly undid the work of making them look different.
+  const row = a.boss ? 'explosion' : (DEATH_OF[a.kind.row] || 'debris');
+  fx.spawn(row, a.px + 16, a.py + 16, a.boss ? 2 : 1.25);
+  // ...and leaves a mark, so a tunnel you fought through looks fought through.
+  const mark = SCORCH_FOR[row];
+  if (mark != null) {
+    const scorch = assets.anim.react?.scorch?.[mark];
+    if (scorch) fx.pop(scorch, a.px + 16, a.py + 24, 1.6, 0);
+  }
   a.boss ? audio.explode() : audio.kill();
   state.shake = Math.max(state.shake, a.boss ? 1.2 : 0.35);
   // The bounty goes through the bay like everything else, so a kill cannot
@@ -1145,6 +1156,14 @@ function update(dt) {
   // nothing on screen said why.
   ramAliens(aliens, player, dt, alienKilled, (a, through) => {
     if (a.kind.armor && through < 1 && tips.show('shell')) store(save);
+    // A visible reaction on the thing being hit, picked by what it is made of:
+    // a shell skids the hit off, flesh recoils. Rate-limited, because ramming
+    // lands every frame and this would otherwise be a wall of sprites.
+    a.reactT = (a.reactT || 0) - dt;
+    if (a.reactT <= 0 && a.hp > 0) {
+      a.reactT = 0.34;
+      fx.spawn(staggerOf(a), a.px + 16, a.py + 16, 0.85);
+    }
   });
 
   // The laser. One shot per press, gated by its own cooldown and by heat, so

@@ -11,7 +11,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { W, D, CORE_TOP, EMPTY, STRATA, World, rng, strataAt } from '../src/world.js';
 import { populate, collectOre, hitScale, updateAliens, ALIEN_KINDS, HAZARD_KINDS, PICKUPS,
-         VENT_TIME, VENT_BONUS, COIL_TIME, lavaLevel, lavaBurn, LAVA } from '../src/entities.js';
+         VENT_TIME, VENT_BONUS, COIL_TIME, lavaLevel, lavaBurn, LAVA, DEATH_OF, staggerOf } from '../src/entities.js';
 import { createPlayer, cargoUsed, cargoRoom, stowOre, dumpOre } from '../src/player.js';
 import { statsFor, difficultyFor, UPGRADES } from '../src/progress.js';
 
@@ -338,6 +338,15 @@ console.log('\nart');
   for (const k of ALIEN_KINDS) check(`art for alien ${k.row}`, rows[k.row] > 0);
   for (const k of HAZARD_KINDS) check(`art for hazard ${k.row}`, rows[k.row] > 0);
   check('art for the guardian', rows.guardian > 0);
+
+  // Every kind must have a death, and that death must have art. Adding an
+  // alien without one is silent: it just dies as nothing at all.
+  for (const k of ALIEN_KINDS) {
+    const death = DEATH_OF[k.row];
+    check(`${k.row} has a death`, !!death && rows[death] > 0, death || 'unmapped');
+  }
+  check('both staggers exist',
+        rows[staggerOf({ kind: {} })] > 0 && rows[staggerOf({ kind: { armor: 0.5 } })] > 0);
   check('pickup row covers every kind', (rows.pickup || 0) >= PICKUPS.length,
         `${rows.pickup} frames for ${PICKUPS.length} kinds`);
   check('gem row covers every ore tier', (rows.gem || 0) >= 5);
@@ -365,6 +374,7 @@ console.log('\nart');
     ...Object.keys(atlas.alien_digger_14_heat_laser?.animations || {}),
     ...Object.keys(atlas.alien_digger_15_collapse?.animations || {}),
     ...Object.keys(atlas.alien_digger_18_lava?.animations || {}),
+    ...Object.keys(atlas.alien_digger_17_reactions?.animations || {}),
     // fx.js also resolves the minerals sheet's sparkle row by name
     ...Object.keys(atlas.alien_digger_04_minerals_sheet?.animations || {}).filter((r) => r === 'sparkle'),
   ]);

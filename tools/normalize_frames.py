@@ -43,6 +43,7 @@ TARGET = {
     "alien_digger_12_drill_diagonals": 64,
     "alien_digger_14_heat_laser": 64,
     "alien_digger_13_upgrades": 48,
+    "alien_digger_17_reactions": 64,
     "alien_digger_19_enemies": 48,
     "alien_digger_15_collapse": 64,
     "alien_digger_18_lava": 32,
@@ -76,6 +77,8 @@ COUNTS = {
     # loose spark and smoke rows over-split, exactly as the FX sheet's do.
     "friction": 4, "tiphot": 4, "tipcrit": 4, "steam": 4, "beamfire": 4,
     "beamrock": 4, "beamarmour": 4, "shieldwrap": 4, "hullcrack": 4, "sputter": 4,
+    "staggersoft": 5, "staggerarmour": 5, "deathgoo": 5, "deathchitin": 5,
+    "deathember": 5, "deathspore": 5, "deathmachine": 5, "scorch": 5,
     "oreleech": 3, "sentinel": 3, "broodsac": 3, "magmaling": 3, "glowfly": 3,
     "geyser": 3, "sinkhole": 3, "magnetnode": 3,
     # Ragged by design: these mirror UPGRADES[].max in src/progress.js.

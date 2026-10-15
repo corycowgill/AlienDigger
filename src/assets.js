@@ -19,6 +19,7 @@ const SHEETS = {
   upg: 'alien_digger_13_upgrades',
   decor: 'alien_digger_16_cavern_decor',
   extra: 'alien_digger_19_enemies',
+  react: 'alien_digger_17_reactions',
 };
 
 // Sheet 19 carries both creatures and hazards. They are folded into the two

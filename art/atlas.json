@@ -1694,6 +1694,539 @@
       }
     ]
   },
+  "alien_digger_17_reactions": {
+    "source": "fx/alien_digger_17_reactions.png",
+    "frames": [
+      {
+        "name": "staggersoft_00",
+        "row": "staggersoft",
+        "index": 0,
+        "file": "sliced/alien_digger_17_reactions/staggersoft_00.png",
+        "rect": {
+          "x": 24,
+          "y": 13,
+          "w": 219,
+          "h": 120
+        }
+      },
+      {
+        "name": "staggersoft_01",
+        "row": "staggersoft",
+        "index": 1,
+        "file": "sliced/alien_digger_17_reactions/staggersoft_01.png",
+        "rect": {
+          "x": 319,
+          "y": 31,
+          "w": 215,
+          "h": 102
+        }
+      },
+      {
+        "name": "staggersoft_02",
+        "row": "staggersoft",
+        "index": 2,
+        "file": "sliced/alien_digger_17_reactions/staggersoft_02.png",
+        "rect": {
+          "x": 576,
+          "y": 8,
+          "w": 230,
+          "h": 128
+        }
+      },
+      {
+        "name": "staggersoft_03",
+        "row": "staggersoft",
+        "index": 3,
+        "file": "sliced/alien_digger_17_reactions/staggersoft_03.png",
+        "rect": {
+          "x": 859,
+          "y": 23,
+          "w": 229,
+          "h": 110
+        }
+      },
+      {
+        "name": "staggersoft_04",
+        "row": "staggersoft",
+        "index": 4,
+        "file": "sliced/alien_digger_17_reactions/staggersoft_04.png",
+        "rect": {
+          "x": 1160,
+          "y": 16,
+          "w": 222,
+          "h": 117
+        }
+      },
+      {
+        "name": "staggerarmour_00",
+        "row": "staggerarmour",
+        "index": 0,
+        "file": "sliced/alien_digger_17_reactions/staggerarmour_00.png",
+        "rect": {
+          "x": 37,
+          "y": 145,
+          "w": 195,
+          "h": 127
+        }
+      },
+      {
+        "name": "staggerarmour_01",
+        "row": "staggerarmour",
+        "index": 1,
+        "file": "sliced/alien_digger_17_reactions/staggerarmour_01.png",
+        "rect": {
+          "x": 315,
+          "y": 145,
+          "w": 205,
+          "h": 127
+        }
+      },
+      {
+        "name": "staggerarmour_02",
+        "row": "staggerarmour",
+        "index": 2,
+        "file": "sliced/alien_digger_17_reactions/staggerarmour_02.png",
+        "rect": {
+          "x": 600,
+          "y": 145,
+          "w": 203,
+          "h": 127
+        }
+      },
+      {
+        "name": "staggerarmour_03",
+        "row": "staggerarmour",
+        "index": 3,
+        "file": "sliced/alien_digger_17_reactions/staggerarmour_03.png",
+        "rect": {
+          "x": 880,
+          "y": 145,
+          "w": 209,
+          "h": 127
+        }
+      },
+      {
+        "name": "staggerarmour_04",
+        "row": "staggerarmour",
+        "index": 4,
+        "file": "sliced/alien_digger_17_reactions/staggerarmour_04.png",
+        "rect": {
+          "x": 1173,
+          "y": 145,
+          "w": 196,
+          "h": 125
+        }
+      },
+      {
+        "name": "deathgoo_00",
+        "row": "deathgoo",
+        "index": 0,
+        "file": "sliced/alien_digger_17_reactions/deathgoo_00.png",
+        "rect": {
+          "x": 31,
+          "y": 292,
+          "w": 204,
+          "h": 127
+        }
+      },
+      {
+        "name": "deathgoo_01",
+        "row": "deathgoo",
+        "index": 1,
+        "file": "sliced/alien_digger_17_reactions/deathgoo_01.png",
+        "rect": {
+          "x": 300,
+          "y": 287,
+          "w": 229,
+          "h": 133
+        }
+      },
+      {
+        "name": "deathgoo_02",
+        "row": "deathgoo",
+        "index": 2,
+        "file": "sliced/alien_digger_17_reactions/deathgoo_02.png",
+        "rect": {
+          "x": 572,
+          "y": 286,
+          "w": 268,
+          "h": 135
+        }
+      },
+      {
+        "name": "deathgoo_03",
+        "row": "deathgoo",
+        "index": 3,
+        "file": "sliced/alien_digger_17_reactions/deathgoo_03.png",
+        "rect": {
+          "x": 868,
+          "y": 334,
+          "w": 245,
+          "h": 85
+        }
+      },
+      {
+        "name": "deathgoo_04",
+        "row": "deathgoo",
+        "index": 4,
+        "file": "sliced/alien_digger_17_reactions/deathgoo_04.png",
+        "rect": {
+          "x": 1171,
+          "y": 355,
+          "w": 185,
+          "h": 67
+        }
+      },
+      {
+        "name": "deathchitin_00",
+        "row": "deathchitin",
+        "index": 0,
+        "file": "sliced/alien_digger_17_reactions/deathchitin_00.png",
+        "rect": {
+          "x": 23,
+          "y": 435,
+          "w": 220,
+          "h": 122
+        }
+      },
+      {
+        "name": "deathchitin_01",
+        "row": "deathchitin",
+        "index": 1,
+        "file": "sliced/alien_digger_17_reactions/deathchitin_01.png",
+        "rect": {
+          "x": 306,
+          "y": 432,
+          "w": 233,
+          "h": 128
+        }
+      },
+      {
+        "name": "deathchitin_02",
+        "row": "deathchitin",
+        "index": 2,
+        "file": "sliced/alien_digger_17_reactions/deathchitin_02.png",
+        "rect": {
+          "x": 586,
+          "y": 432,
+          "w": 239,
+          "h": 127
+        }
+      },
+      {
+        "name": "deathchitin_03",
+        "row": "deathchitin",
+        "index": 3,
+        "file": "sliced/alien_digger_17_reactions/deathchitin_03.png",
+        "rect": {
+          "x": 863,
+          "y": 443,
+          "w": 251,
+          "h": 112
+        }
+      },
+      {
+        "name": "deathchitin_04",
+        "row": "deathchitin",
+        "index": 4,
+        "file": "sliced/alien_digger_17_reactions/deathchitin_04.png",
+        "rect": {
+          "x": 1152,
+          "y": 530,
+          "w": 27,
+          "h": 23
+        }
+      },
+      {
+        "name": "deathchitin_05",
+        "row": "deathchitin",
+        "index": 5,
+        "file": "sliced/alien_digger_17_reactions/deathchitin_05.png",
+        "rect": {
+          "x": 1182,
+          "y": 526,
+          "w": 43,
+          "h": 27
+        }
+      },
+      {
+        "name": "deathchitin_06",
+        "row": "deathchitin",
+        "index": 6,
+        "file": "sliced/alien_digger_17_reactions/deathchitin_06.png",
+        "rect": {
+          "x": 1227,
+          "y": 497,
+          "w": 59,
+          "h": 56
+        }
+      },
+      {
+        "name": "deathchitin_07",
+        "row": "deathchitin",
+        "index": 7,
+        "file": "sliced/alien_digger_17_reactions/deathchitin_07.png",
+        "rect": {
+          "x": 1291,
+          "y": 511,
+          "w": 51,
+          "h": 42
+        }
+      },
+      {
+        "name": "deathember_00",
+        "row": "deathember",
+        "index": 0,
+        "file": "sliced/alien_digger_17_reactions/deathember_00.png",
+        "rect": {
+          "x": 24,
+          "y": 569,
+          "w": 220,
+          "h": 118
+        }
+      },
+      {
+        "name": "deathember_01",
+        "row": "deathember",
+        "index": 1,
+        "file": "sliced/alien_digger_17_reactions/deathember_01.png",
+        "rect": {
+          "x": 294,
+          "y": 565,
+          "w": 248,
+          "h": 123
+        }
+      },
+      {
+        "name": "deathember_02",
+        "row": "deathember",
+        "index": 2,
+        "file": "sliced/alien_digger_17_reactions/deathember_02.png",
+        "rect": {
+          "x": 574,
+          "y": 565,
+          "w": 258,
+          "h": 124
+        }
+      },
+      {
+        "name": "deathember_03",
+        "row": "deathember",
+        "index": 3,
+        "file": "sliced/alien_digger_17_reactions/deathember_03.png",
+        "rect": {
+          "x": 870,
+          "y": 574,
+          "w": 241,
+          "h": 115
+        }
+      },
+      {
+        "name": "deathember_04",
+        "row": "deathember",
+        "index": 4,
+        "file": "sliced/alien_digger_17_reactions/deathember_04.png",
+        "rect": {
+          "x": 1151,
+          "y": 633,
+          "w": 233,
+          "h": 56
+        }
+      },
+      {
+        "name": "deathspore_00",
+        "row": "deathspore",
+        "index": 0,
+        "file": "sliced/alien_digger_17_reactions/deathspore_00.png",
+        "rect": {
+          "x": 42,
+          "y": 697,
+          "w": 180,
+          "h": 144
+        }
+      },
+      {
+        "name": "deathspore_01",
+        "row": "deathspore",
+        "index": 1,
+        "file": "sliced/alien_digger_17_reactions/deathspore_01.png",
+        "rect": {
+          "x": 312,
+          "y": 699,
+          "w": 219,
+          "h": 141
+        }
+      },
+      {
+        "name": "deathspore_02",
+        "row": "deathspore",
+        "index": 2,
+        "file": "sliced/alien_digger_17_reactions/deathspore_02.png",
+        "rect": {
+          "x": 571,
+          "y": 698,
+          "w": 258,
+          "h": 144
+        }
+      },
+      {
+        "name": "deathspore_03",
+        "row": "deathspore",
+        "index": 3,
+        "file": "sliced/alien_digger_17_reactions/deathspore_03.png",
+        "rect": {
+          "x": 859,
+          "y": 712,
+          "w": 213,
+          "h": 126
+        }
+      },
+      {
+        "name": "deathspore_04",
+        "row": "deathspore",
+        "index": 4,
+        "file": "sliced/alien_digger_17_reactions/deathspore_04.png",
+        "rect": {
+          "x": 1073,
+          "y": 723,
+          "w": 24,
+          "h": 62
+        }
+      },
+      {
+        "name": "deathspore_05",
+        "row": "deathspore",
+        "index": 5,
+        "file": "sliced/alien_digger_17_reactions/deathspore_05.png",
+        "rect": {
+          "x": 1218,
+          "y": 703,
+          "w": 27,
+          "h": 130
+        }
+      },
+      {
+        "name": "deathmachine_00",
+        "row": "deathmachine",
+        "index": 0,
+        "file": "sliced/alien_digger_17_reactions/deathmachine_00.png",
+        "rect": {
+          "x": 30,
+          "y": 846,
+          "w": 202,
+          "h": 128
+        }
+      },
+      {
+        "name": "deathmachine_01",
+        "row": "deathmachine",
+        "index": 1,
+        "file": "sliced/alien_digger_17_reactions/deathmachine_01.png",
+        "rect": {
+          "x": 307,
+          "y": 844,
+          "w": 220,
+          "h": 129
+        }
+      },
+      {
+        "name": "deathmachine_02",
+        "row": "deathmachine",
+        "index": 2,
+        "file": "sliced/alien_digger_17_reactions/deathmachine_02.png",
+        "rect": {
+          "x": 570,
+          "y": 841,
+          "w": 254,
+          "h": 133
+        }
+      },
+      {
+        "name": "deathmachine_03",
+        "row": "deathmachine",
+        "index": 3,
+        "file": "sliced/alien_digger_17_reactions/deathmachine_03.png",
+        "rect": {
+          "x": 863,
+          "y": 858,
+          "w": 244,
+          "h": 116
+        }
+      },
+      {
+        "name": "deathmachine_04",
+        "row": "deathmachine",
+        "index": 4,
+        "file": "sliced/alien_digger_17_reactions/deathmachine_04.png",
+        "rect": {
+          "x": 1146,
+          "y": 873,
+          "w": 230,
+          "h": 100
+        }
+      },
+      {
+        "name": "scorch_00",
+        "row": "scorch",
+        "index": 0,
+        "file": "sliced/alien_digger_17_reactions/scorch_00.png",
+        "rect": {
+          "x": 23,
+          "y": 1019,
+          "w": 230,
+          "h": 74
+        }
+      },
+      {
+        "name": "scorch_01",
+        "row": "scorch",
+        "index": 1,
+        "file": "sliced/alien_digger_17_reactions/scorch_01.png",
+        "rect": {
+          "x": 314,
+          "y": 1015,
+          "w": 216,
+          "h": 78
+        }
+      },
+      {
+        "name": "scorch_02",
+        "row": "scorch",
+        "index": 2,
+        "file": "sliced/alien_digger_17_reactions/scorch_02.png",
+        "rect": {
+          "x": 588,
+          "y": 1007,
+          "w": 246,
+          "h": 89
+        }
+      },
+      {
+        "name": "scorch_03",
+        "row": "scorch",
+        "index": 3,
+        "file": "sliced/alien_digger_17_reactions/scorch_03.png",
+        "rect": {
+          "x": 869,
+          "y": 1016,
+          "w": 233,
+          "h": 83
+        }
+      },
+      {
+        "name": "scorch_04",
+        "row": "scorch",
+        "index": 4,
+        "file": "sliced/alien_digger_17_reactions/scorch_04.png",
+        "rect": {
+          "x": 1149,
+          "y": 1010,
+          "w": 212,
+          "h": 80
+        }
+      }
+    ]
+  },
   "alien_digger_06_hud_sheet": {
     "source": "hud/alien_digger_06_hud_sheet.png",
     "frames": [

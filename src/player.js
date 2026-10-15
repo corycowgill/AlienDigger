@@ -196,7 +196,10 @@ export function updatePlayer(p, world, input, dt, fx) {
     p.drilling = true;
     // clamp both ends: the ice shelf's negative heat would otherwise bank an
     // arbitrarily deep cold reserve that makes the magma below it free
-    p.heat = Math.max(0, Math.min(HEAT_MAX, p.heat + strataAt(ny).heat * p.stats.cooling * dt));
+    // The planet's own heat scaling rides alongside the drill's cooling, so a
+    // frozen world changes the pace of the deep game rather than just its sums.
+    p.heat = Math.max(0, Math.min(HEAT_MAX,
+      p.heat + strataAt(ny).heat * (world.heatScale ?? 1) * p.stats.cooling * dt));
     p.drillProgress += p.stats.drillRate * (p.boost > 0 ? 1.7 : 1)
                      * (p.fuel <= 0 ? DRY_DRILL_SCALE : 1) * dt;
     p.fuel -= FUEL_DRILL * dt;

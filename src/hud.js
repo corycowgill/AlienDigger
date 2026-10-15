@@ -18,7 +18,7 @@ const STRATA_COLORS = [
 // A vertical slice of the planet with the drill's position on it. Depth in
 // metres alone says how far you have come and nothing about how far is left,
 // which is the number that actually governs whether to turn back.
-function descentBar(ctx, x, y, w, h, depth, maxDepth, strata) {
+function descentBar(ctx, x, y, w, h, depth, maxDepth, strata, lava) {
   ctx.fillStyle = '#0c0a12';
   ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
 
@@ -40,6 +40,18 @@ function descentBar(ctx, x, y, w, h, depth, maxDepth, strata) {
   ctx.fillRect(x - 3, Math.round(at) - 2, w + 6, 4);
   ctx.fillStyle = TRIM;
   ctx.fillRect(x - 3, Math.round(at) - 1, w + 6, 2);
+
+  // The flood, on the same slice of planet as the drill. The gap between the
+  // two markers is the player's margin, which is the number the escape is
+  // actually about -- and reading it off a bar they are already watching beats
+  // reading it off the shaft behind them while climbing.
+  if (lava != null && lava <= maxDepth) {
+    const ly = y + h * Math.max(0, Math.min(1, lava / maxDepth));
+    ctx.fillStyle = '#5c1408';
+    ctx.fillRect(x, ly, w, y + h - ly);
+    ctx.fillStyle = '#ffd089';
+    ctx.fillRect(x - 2, Math.round(ly) - 1, w + 4, 2);
+  }
 
   ctx.strokeStyle = '#2b2438';
   ctx.lineWidth = 1;
@@ -100,7 +112,7 @@ export function drawHud(ctx, p, state, cw, muted, strata, maxDepth, diff, laser)
   ctx.fillText('DEPTH', 486, 20);
   ctx.font = 'bold 20px ui-monospace, monospace';
   ctx.fillText(`${p.ty}m`, 486, 39);
-  if (strata) descentBar(ctx, 552, 8, 10, 46, p.ty, maxDepth, strata);
+  if (strata) descentBar(ctx, 552, 8, 10, 46, p.ty, maxDepth, strata, state.escaping ? state.lava : null);
 
   // mineral tally
   ctx.font = '11px ui-monospace, monospace';
@@ -179,11 +191,19 @@ export function drawHud(ctx, p, state, cw, muted, strata, maxDepth, diff, laser)
     ctx.fillRect(x, 55, Math.round(96 * Math.min(1, left / 9)), 2);
   });
 
-  if (diff && diff.planet > 1) {
+  // Which world this is, now that they differ. Worth saying every run rather
+  // than only past the first, because the type is a choice the player made at
+  // the Foundry and the run should remember it back to them.
+  if (diff) {
+    ctx.textAlign = 'right';
     ctx.fillStyle = '#e8b02b';
     ctx.font = 'bold 10px ui-monospace, monospace';
-    ctx.textAlign = 'right';
     ctx.fillText(`PLANET ${diff.planet}`, cw - 12, 20);
+    if (diff.type && diff.type.key !== 'rocky') {
+      ctx.fillStyle = '#8c85a0';
+      ctx.font = '9px ui-monospace, monospace';
+      ctx.fillText(diff.type.name, cw - 12, 32);
+    }
     ctx.textAlign = 'left';
   }
 

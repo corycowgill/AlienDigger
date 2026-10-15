@@ -14,7 +14,7 @@ import { createTitle } from './title.js';
 import { createFoundry } from './foundry.js';
 import { createHelp } from './help.js';
 import { createTips } from './tips.js';
-import { load, store, statsFor, valueOf, difficultyFor } from './progress.js';
+import { load, store, statsFor, valueOf, difficultyFor, offeredPlanets } from './progress.js';
 import { createAudio } from './audio.js';
 
 const canvas = document.getElementById('screen');
@@ -95,11 +95,11 @@ let world, player, aliens, hazards, pickups, props, state, cam, hazardAt, diff;
 let cacheOX = null, cacheOY = null;
 
 function reset(seed = Date.now() & 0xffff) {
-  diff = difficultyFor(save.cracked);
-  world = new World(seed, diff.hardness);
+  diff = difficultyFor(save.cracked, save.planet);
+  world = new World(seed, diff.hardness, diff.mods);
   const rand = rng(seed ^ 0x9e37);
   player = createPlayer(save.levels);
-  ({ aliens, hazards, pickups, props } = populate(world, rand, diff.density));
+  ({ aliens, hazards, pickups, props } = populate(world, rand, diff.density, diff.mods));
   hazardAt = new Set(hazards.map((h) => h.y * W + h.x));
   cacheOX = cacheOY = null;   // new world, cached terrain is meaningless
   audio.alarm(false);   // a restart mid-escape used to leave this beeping

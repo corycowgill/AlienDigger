@@ -13,9 +13,14 @@ Open `index.html` through any static file server — ES modules will not load fr
 `file://`:
 
 ```bash
-python -m http.server 8765
-# then open http://localhost:8765/
+python tools/serve.py          # http://localhost:8765, caching off
+# or: python -m http.server 8765
 ```
+
+Use `tools/serve.py` while developing. `python -m http.server` sends no cache
+headers, so a browser will happily pair a *new* `main.js` with a *stale*
+`audio.js` and throw "X is not a function" -- which looks exactly like a bug in
+the code you just wrote. That cost this project an afternoon more than once.
 
 **Keyboard** — `WASD` / arrow keys to drill, `E` to plant a charge, `F` (or `Q`)
 to fire the laser, `G` to dump the cheapest ore aboard (hold to repeat), `R` to
@@ -71,6 +76,29 @@ heat sinks and cargo bay. Credits and levels persist in `localStorage`.
 
 Planets get harder as you crack them: tougher rock, busier caves, a tighter
 climb out -- and a bigger payout, so the risk is chosen rather than imposed.
+
+They also differ in kind. The Foundry offers three worlds to choose between,
+always including a plain one, so the screen asks two questions rather than one:
+what to buy, and where to take it. A type has to change what the run *is*, not
+just how hard it is -- a **frozen** world is slow rock that lets the bit run
+cold, so heat stops being what paces you; a **hollow** one is barely any
+drilling and far more company, so the hull binds before the tank does; a
+**dense** one is nearly solid, which is quiet and slow and thirsty. Measured
+over 60 runs each, they form a ladder rather than a ranking:
+
+| world | escaped | banked |
+|---|---|---|
+| frozen | 36/60 | 186 CR |
+| rocky | 33/60 | 208 CR |
+| dense | 23/60 | 224 CR |
+| hollow | 23/60 | 213 CR |
+| rich | 21/60 | 244 CR |
+| volcanic | 19/60 | 258 CR |
+
+Safer is poorer and riskier is richer, which is the shape that makes the choice
+worth making. One caveat the simulator cannot settle: FROZEN's real benefit is
+heat relief, and the policies already pace heat perfectly, so they value it at
+nothing. A human who redlines will rate it higher than that table does.
 Upgrades outpace that for a while and then the escalation catches back up, so a
 maxed drill on planet 15 is still a real run.
 

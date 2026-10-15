@@ -162,7 +162,12 @@ const BURIED_PICKUP = 0.042;
 // risk imposed on a shaft that happened to pass nearby.
 const BURIED_HAZARD = 0.0085;
 
-export function populate(world, rand, density = 1) {
+// `density` is the planet-count difficulty curve; `mods` is the planet type.
+// They multiply rather than replace each other, so a volcanic world on planet
+// ten is both.
+export function populate(world, rand, density = 1, mods = {}) {
+  const alienMod = mods.alien ?? 1;
+  const hazardMod = mods.hazard ?? 1;
   const aliens = [];
   const hazards = [];
   const pickups = [];
@@ -174,7 +179,7 @@ export function populate(world, rand, density = 1) {
         // can only ever stand in a tile that has been dug out.
         if (rand() < BURIED_PICKUP) {
           pickups.push({ kind: rollPickup(rand, y), x, y, taken: false });
-        } else if (rand() < BURIED_HAZARD * density) {
+        } else if (rand() < BURIED_HAZARD * density * hazardMod) {
           const pool = HAZARD_KINDS.filter((k) => y >= k.from);
           if (pool.length) {
             const kind = pool[Math.floor(rand() * pool.length)];
@@ -191,7 +196,7 @@ export function populate(world, rand, density = 1) {
       // them, or the game gets easier the more there is in it. 0.032 puts it
       // back on 41/60, which is the two-in-three the rest of the balance
       // assumes; 0.036 overshot to 35/60.
-      if (rand() < 0.032 * density) {
+      if (rand() < 0.032 * density * alienMod) {
         const pool = ALIEN_KINDS.filter((k) => y >= k.from && y < (k.to ?? Infinity));
         if (pool.length) {
           const kind = pool[Math.floor(rand() * pool.length)];
@@ -209,7 +214,7 @@ export function populate(world, rand, density = 1) {
             face: [dx, 0],
           });
         }
-      } else if (rand() < 0.035 * density) {
+      } else if (rand() < 0.035 * density * hazardMod) {
         const pool = HAZARD_KINDS.filter((k) => y >= k.from);
         if (pool.length) {
           const kind = pool[Math.floor(rand() * pool.length)];

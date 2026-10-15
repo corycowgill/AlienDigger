@@ -55,9 +55,18 @@ function smoothNoise(rand, w, h, scale) {
 }
 
 export class World {
-  constructor(seed = 1337, hardnessScale = 1) {
+  // `mods` carries the planet type: how cavernous it is, how rich, and how hot
+  // the rock runs. Defaulting every field to 1 means a plain World() is exactly
+  // the world the game was tuned on, so nothing that existed before this has to
+  // know planets have types.
+  constructor(seed = 1337, hardnessScale = 1, mods = {}) {
     const rand = rng(seed);
     this.rand = rand;
+    const caveMod = mods.caves ?? 1;
+    const oreMod = mods.ore ?? 1;
+    // Read by player.js when it heats the bit, so a frozen world is a different
+    // pace rather than just softer numbers.
+    this.heatScale = mods.heat ?? 1;
     this.tiles = new Int8Array(W * D);      // strata row, or EMPTY
     this.variant = new Uint8Array(W * D);
     this.ore = new Int8Array(W * D).fill(-1);   // index into the ore row
@@ -105,7 +114,9 @@ export class World {
 
         // caves thin out with depth so the descent stays a dig, not a fall
         const openness = cave(x, y);
-        const threshold = 0.72 + (y / D) * 0.16;
+        // A higher threshold means less open space, so a cavernous planet
+        // lowers it and a dense one raises it.
+        const threshold = 0.72 + (y / D) * 0.16 - (caveMod - 1) * 0.085;
         const edge = x < 2 || x > W - 3;          // keep the shaft walls solid
         this.tiles[i] = (!edge && openness > threshold) ? EMPTY : row;
         this.hp[i] = s.hardness * hardnessScale;
@@ -119,7 +130,7 @@ export class World {
       for (let x = 0; x < W; x++) {
         const i = y * W + x;
         if (this.tiles[i] === EMPTY) continue;
-        if (rand() > 0.022) continue;
+        if (rand() > 0.022 * oreMod) continue;
         // Depth sets which tiers are available at all; the curve then makes the
         // good ones rare within that. The old formula did the opposite -- it
         // pushed the tier floor up with depth, so because most of the world is
@@ -137,7 +148,7 @@ export class World {
     // question, because the detour costs fuel and heat and the rich ones sit in
     // the deep where both are scarce.
     this.veins = [];
-    const veinCount = 15 + Math.floor(rand() * 6);
+    const veinCount = Math.round((15 + Math.floor(rand() * 6)) * oreMod);
     for (let v = 0; v < veinCount; v++) {
       const cy = 14 + Math.floor(rand() * (CORE_TOP - 24));
       const cx = 2 + Math.floor(rand() * (W - 4));

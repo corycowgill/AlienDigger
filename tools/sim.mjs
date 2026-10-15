@@ -17,7 +17,7 @@
 import { TILE, W, D, CORE_TOP, EMPTY, World, STRATA, strataAt, rng } from '../src/world.js';
 import { createPlayer, updatePlayer, damage, cargoUsed, cargoRoom, dumpOre } from '../src/player.js';
 import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup, collectOre, runTremor, TREMOR, lavaLevel, lavaBurn, leechSteal } from '../src/entities.js';
-import { statsFor, difficultyFor, valueOf } from '../src/progress.js';
+import { statsFor, difficultyFor, valueOf, planetType } from '../src/progress.js';
 
 const DT = 1 / 60;
 const MAX_SECONDS = 1200;
@@ -81,11 +81,11 @@ function nearestPickup(pickups, p, radius, want) {
   return best;
 }
 
-function run(seed, policy, levels = {}, planet = 0) {
-  const diff = difficultyFor(planet);
-  const world = new World(seed, diff.hardness);
+function run(seed, policy, levels = {}, planet = 0, type = 'rocky') {
+  const diff = difficultyFor(planet, type);
+  const world = new World(seed, diff.hardness, diff.mods);
   const player = createPlayer(levels);
-  const { aliens, hazards, pickups } = populate(world, rng(seed ^ 0x9e37), diff.density);
+  const { aliens, hazards, pickups } = populate(world, rng(seed ^ 0x9e37), diff.density, diff.mods);
   const input = scriptedInput();
   const shaftX = player.tx;     // the column the descent was dug down
 
@@ -366,6 +366,9 @@ const levels = Object.fromEntries((process.argv[3] || '').split(',').filter(Bool
 // dial rather than a stat, so it comes back out before statsFor ever sees it.
 if ('detour' in levels) { DETOUR = levels.detour; delete levels.detour; }
 const planet = Number(process.argv[4] || 0);
+// node tools/sim.mjs 40 '' 0 volcanic  -> run that world type
+const TYPE = planetType(process.argv[5] || 'rocky').key;
+if (TYPE !== 'rocky') console.log('world:', TYPE);
 if (Object.keys(levels).length) console.log('upgrades:', JSON.stringify(levels));
 if (planet) console.log('planet:', planet + 1);
 
@@ -378,7 +381,7 @@ console.log(`  TOTAL ${b.total} fuel vs a ${statsFor({}).maxFuel}-unit tank = ${
 
 for (const policy of ['beeline', 'greedy', 'prospector']) {
   const results = [];
-  for (let i = 0; i < runs; i++) results.push(run(1000 + i, policy, levels, planet));
+  for (let i = 0; i < runs; i++) results.push(run(1000 + i, policy, levels, planet, TYPE));
   const won = results.filter((r) => r.escaped).length;
   const cored = results.filter((r) => r.reachedCore).length;
   const died = results.filter((r) => r.dead).length;

@@ -3,7 +3,7 @@
 // Reached after a run ends, whether the planet cracked or the drill did, so a
 // bad run still pays something and the next one starts stronger.
 
-import { UPGRADES, costOf, buy, statsFor, store } from './progress.js';
+import { UPGRADES, costOf, buy, statsFor, store, offeredPlanets } from './progress.js';
 
 const ORE_NAMES = ['Cu', 'Ir', 'Vd', 'Am', 'Pc'];
 
@@ -40,6 +40,35 @@ export function createFoundry(save) {
 
       if (input.tapped('up')) sel = (sel + UPGRADES.length - 1) % UPGRADES.length;
       if (input.tapped('down')) sel = (sel + 1) % UPGRADES.length;
+
+      // Left and right pick the world to take next. Those two directions did
+      // nothing on this screen before, so the second decision costs no new
+      // control -- and it is stored straight away, because launching is not
+      // the only way a player leaves this page.
+      //
+      // Both taps are read once, up front. Calling tapped() inside the branch
+      // as well consumes a second time and reads false, which made the
+      // direction unreliable in a way that looked like a dropped keypress.
+      const offer = offeredPlanets(save.runs);
+      const left = input.tapped('left');
+      const right = input.tapped('right');
+
+      // The offer changes when the run count does, so a world chosen last time
+      // may not be on the table now. Snapping back to the first entry keeps the
+      // selection and the highlight agreeing -- otherwise findIndex returns -1,
+      // the cursor silently sits on ROCKY, and the first press appears to do
+      // nothing because it moves from a position the player could not see.
+      if (!offer.some((o) => o.key === save.planet)) {
+        save.planet = offer[0].key;
+        store(save);
+      }
+
+      if (left || right) {
+        const at = offer.findIndex((o) => o.key === save.planet);
+        const step = left ? offer.length - 1 : 1;
+        save.planet = offer[(at + step) % offer.length].key;
+        store(save);
+      }
 
       if (input.tapped('plant')) {
         const bought = buy(save, UPGRADES[sel]);
@@ -123,7 +152,7 @@ export function createFoundry(save) {
       ctx.fillText(`${save.credits} CR`, cw / 2, 148);
 
       // upgrade rows
-      const top = 162, rowH = 44, panelW = 620, x0 = (cw - panelW) / 2;
+      const top = 162, rowH = 42, panelW = 620, x0 = (cw - panelW) / 2;
       UPGRADES.forEach((u, i) => {
         const y = top + i * rowH;
         const lvl = save.levels[u.key] | 0;
@@ -195,7 +224,7 @@ export function createFoundry(save) {
 
       if (flash < 0) {
         ctx.fillStyle = '#ff6b5b';
-        ctx.fillText('NOT ENOUGH CREDITS', cw / 2, top + UPGRADES.length * rowH + 32);
+        ctx.fillText('NOT ENOUGH CREDITS', cw / 2, 134);
       } else if (flash > 0) {
         ctx.fillStyle = TRIM;
         ctx.fillText('INSTALLED', cw / 2, top + UPGRADES.length * rowH + 32);
@@ -204,7 +233,50 @@ export function createFoundry(save) {
       if (Math.floor(this.t * 1.6) % 2 === 0) {
         ctx.fillStyle = TRIM;
         ctx.font = 'bold 15px ui-monospace, monospace';
-        ctx.fillText(pad ? '(Y) LAUNCH' : '[R] LAUNCH', cw / 2, ch - 30);
+        // --- which world to take next. Three on offer, always including ROCKY,
+      // so the second decision of the screen sits beside the first rather than
+      // behind a menu.
+      //
+      // Only the selected world explains itself. Printing all three blurbs at
+      // once overflowed the cards and collided with the launch prompt, and
+      // three sentences competing for attention is not a clearer choice than
+      // one -- the names and the multipliers carry the comparison.
+      {
+        const offer = offeredPlanets(save.runs);
+        const py = top + UPGRADES.length * rowH + 30;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = DIM;
+        ctx.font = '10px ui-monospace, monospace';
+        ctx.fillText(pad ? 'NEXT WORLD   -   d-pad left / right'
+                         : 'NEXT WORLD   -   left / right', cw / 2, py);
+
+        const cardW = 196, gap = 10, cardH = 34;
+        const span = offer.length * cardW + (offer.length - 1) * gap;
+        let chosen = offer[0];
+        offer.forEach((o, i) => {
+          const x = cw / 2 - span / 2 + i * (cardW + gap);
+          const on = o.key === save.planet;
+          if (on) chosen = o;
+          ctx.fillStyle = on ? 'rgba(47,210,232,0.13)' : PANEL;
+          ctx.fillRect(x, py + 8, cardW, cardH);
+          ctx.strokeStyle = on ? TRIM : '#2b2438';
+          ctx.lineWidth = on ? 2 : 1;
+          ctx.strokeRect(x + 0.5, py + 8.5, cardW - 1, cardH - 1);
+
+          ctx.fillStyle = on ? INK : DIM;
+          ctx.font = 'bold 11px ui-monospace, monospace';
+          ctx.fillText(o.name, x + cardW / 2, py + 23);
+          ctx.fillStyle = on ? GOLD : '#6f6883';
+          ctx.font = '9px ui-monospace, monospace';
+          ctx.fillText(`x${o.payout.toFixed(2)} haul`, x + cardW / 2, py + 36);
+        });
+
+        ctx.fillStyle = '#8c85a0';
+        ctx.font = '11px ui-monospace, monospace';
+        ctx.fillText(chosen.blurb, cw / 2, py + 60);
+      }
+
+      ctx.fillText(pad ? '(Y) LAUNCH' : '[R] LAUNCH', cw / 2, ch - 30);
       }
       ctx.fillStyle = '#5b556b';
       ctx.font = '10px ui-monospace, monospace';

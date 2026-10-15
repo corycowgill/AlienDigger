@@ -13,7 +13,7 @@ import { W, D, CORE_TOP, EMPTY, STRATA, World, rng, strataAt } from '../src/worl
 import { populate, collectOre, hitScale, updateAliens, ALIEN_KINDS, HAZARD_KINDS, PICKUPS,
          VENT_TIME, VENT_BONUS, COIL_TIME, lavaLevel, lavaBurn, LAVA, DEATH_OF, staggerOf, guardRage, guardReach, guardPhaseTime, GUARD_PHASE } from '../src/entities.js';
 import { createPlayer, cargoUsed, cargoRoom, stowOre, dumpOre } from '../src/player.js';
-import { statsFor, difficultyFor, UPGRADES } from '../src/progress.js';
+import { statsFor, difficultyFor, UPGRADES, PLANET_TYPES, planetType, offeredPlanets } from '../src/progress.js';
 
 let failures = 0;
 function check(name, ok, detail = '') {
@@ -114,6 +114,53 @@ console.log('\nprogression');
         p9.hardness > p1.hardness && p9.density > p1.density
         && p9.escape < p1.escape && p9.payout > p1.payout);
   check('escape budget never reaches zero', difficultyFor(999).escape > 0);
+}
+
+// ----------------------------------------------------------------- planets
+// A planet type has to be a different run, not just a harder one -- and every
+// one of them has to stay playable, because the player can pick any of them.
+console.log('\nplanets');
+{
+  check('rocky is the neutral baseline',
+        PLANET_TYPES[0].key === 'rocky'
+        && ['hardness', 'caves', 'ore', 'hazard', 'alien', 'heat', 'payout']
+             .every((k) => PLANET_TYPES[0][k] === 1));
+  check('an unknown key falls back rather than throwing',
+        planetType('nonsense').key === 'rocky' && planetType(undefined).key === 'rocky');
+
+  // Nothing may be a free win or an impossible wall.
+  for (const t of PLANET_TYPES) {
+    const spread = ['hardness', 'caves', 'ore', 'hazard', 'alien', 'heat']
+      .map((k) => t[k]);
+    check(`${t.key} stays inside sane bounds`,
+          spread.every((v) => v >= 0.4 && v <= 2) && t.payout >= 0.9 && t.payout <= 1.6,
+          spread.join('/') + ' pay ' + t.payout);
+  }
+  // A type that is easier on every axis AND pays more would dominate.
+  for (const t of PLANET_TYPES.slice(1)) {
+    const easier = t.hardness <= 1 && t.hazard <= 1 && t.alien <= 1 && t.heat <= 1 && t.ore >= 1;
+    check(`${t.key} is not strictly better than rocky`, !(easier && t.payout > 1));
+  }
+
+  // The offer must always be three distinct worlds, and always include a plain
+  // one, so a player who does not want to engage with this never has to.
+  let bad = 0;
+  for (let r = 0; r < 60; r++) {
+    const offer = offeredPlanets(r);
+    const keys = new Set(offer.map((o) => o.key));
+    if (offer.length !== 3 || keys.size !== 3 || !keys.has('rocky')) bad++;
+  }
+  check('every offer is three distinct worlds including rocky', bad === 0, `${bad}/60 bad`);
+  check('the offer is stable for a given run count',
+        offeredPlanets(7).map((o) => o.key).join() === offeredPlanets(7).map((o) => o.key).join());
+
+  // The type must actually reach the generator.
+  const plain = difficultyFor(0, 'rocky'), hollow = difficultyFor(0, 'hollow');
+  check('the type reaches the world generator',
+        hollow.mods.caves > plain.mods.caves && hollow.payout > plain.payout);
+  check('the planet curve and the type multiply',
+        difficultyFor(9, 'dense').hardness > difficultyFor(9, 'rocky').hardness
+        && difficultyFor(9, 'rocky').hardness > difficultyFor(0, 'dense').hardness);
 }
 
 // ------------------------------------------------------------------ cargo

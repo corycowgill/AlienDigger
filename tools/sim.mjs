@@ -104,7 +104,13 @@ function run(seed, policy, levels = {}, planet = 0, type = 'rocky') {
   // sitting in, so it goes over the side -- which is the decision the finite
   // bay exists to create, and the simulator has to make it or the win rate it
   // reports is the win rate of a player who ignores the mechanic.
+  // `novice` is the policy that matters for the first hour: someone who has
+  // understood "go down" and "grab the cans" and nothing else yet. It is not
+  // `beeline` -- beeline is worst-possible play, holding one key into the dark
+  // and ignoring a fuel cell two tiles away. Measuring onboarding against that
+  // flatters the game.
   const paces = policy === 'greedy' || policy === 'prospector';
+  const novice = policy === 'novice';
 
   const manageCargo = () => {
     // Ticked here rather than in the main loop, because the cooling and boss
@@ -129,7 +135,20 @@ function run(seed, policy, levels = {}, planet = 0, type = 'rocky') {
       // A competent player paces: the bit cannot grind continuously once the
       // rock is hot, so back off and let it shed before it redlines.
       // Hysteresis: cool properly rather than tapping at the threshold.
-      if (paces && (player.heat > 82 || (player.cooling && player.heat > 25))) {
+      // A novice reacts to the redline rather than anticipating it, and stops
+      // cooling the moment the bar looks survivable again.
+      const coolAt = novice ? 94 : 82, coolTo = novice ? 60 : 25;
+      if ((paces || novice) && (player.heat > coolAt || (player.cooling && player.heat > coolTo))) {
+        player.cooling = player.heat > coolTo;
+        input.set(null);
+        updatePlayer(player, world, input, DT, noFx);
+        updatePickups(pickups, player, (u) => applyPickup(u, player));
+        collectOre(world, player);
+        manageCargo();
+        t += DT;
+        continue;
+      }
+      if (false) {
         player.cooling = player.heat > 25;
         input.set(null);
         updatePlayer(player, world, input, DT, noFx);
@@ -138,6 +157,16 @@ function run(seed, policy, levels = {}, planet = 0, type = 'rocky') {
         manageCargo();
         t += DT;
         continue;
+      }
+
+      if (novice) {
+        // Three tiles, not eight, and only once it is actually hurting --
+        // which is how it feels before you have learned that fuel is a budget
+        // you spend rather than a meter that warns you.
+        const u = player.fuel < 35 ? nearestPickup(pickups, player, 3, 'fuel')
+                : player.hull < 35 ? nearestPickup(pickups, player, 3, 'repair')
+                : null;
+        if (u && u.x !== player.tx) dir = u.x < player.tx ? 'left' : 'right';
       }
 
       if (paces) {
@@ -379,7 +408,7 @@ for (const r of b.rows) {
 }
 console.log(`  TOTAL ${b.total} fuel vs a ${statsFor({}).maxFuel}-unit tank = ${(b.total / statsFor({}).maxFuel).toFixed(1)} tanks\n`);
 
-for (const policy of ['beeline', 'greedy', 'prospector']) {
+for (const policy of ['beeline', 'novice', 'greedy', 'prospector']) {
   const results = [];
   for (let i = 0; i < runs; i++) results.push(run(1000 + i, policy, levels, planet, TYPE));
   const won = results.filter((r) => r.escaped).length;

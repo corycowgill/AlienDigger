@@ -104,7 +104,34 @@ maxed drill on planet 15 is still a real run.
 
 The base game is tuned so a fresh save is hard: simulated, competent play clears
 about two runs in three, and a careless straight dig never gets out at all --
-it runs the tank dry around 145m, on every seed tried. Upgrades buy the margin
+it runs the tank dry around 145m, on every seed tried.
+
+The first hour is its own question, and `beeline` is the wrong way to ask it:
+holding one key into the dark past a fuel cell two tiles away is worst-possible
+play, not inexperience. The `novice` policy is the honest proxy -- it has
+understood "go down" and "grab the cans" and nothing else, reacts to the
+redline instead of anticipating it, and detours three tiles rather than eight.
+Measured over 60 runs at each rung:
+
+| save | novice escapes |
+|---|---|
+| fresh | 0/60 |
+| hull 1, tank 1 | 13/60 |
+| hull 2, tank 2, drill 1 | 34/60 |
+| hull 3, tank 3, drill 2, thrusters 2 | 51/60 |
+
+A fresh save genuinely never wins on naive play, and that is the first chapter
+rather than a flaw: the novice still *reaches the core* about two runs in three
+and banks 59 CR of salvage each time, against a 110 CR cheapest upgrade. Two
+runs buys the first part, four buys the pair that makes the game winnable.
+Where it dies is specific -- 41 of 60 deaths are on the climb out, with fuel
+still in the tank -- so the lesson the game teaches is "arrive healthier",
+which is exactly what hull plating sells.
+
+This was worth measuring rather than guessing at. The first fix tried for it --
+repair kits in the core chamber -- lifted *competent* play from 41/60 to 48/60
+and did nothing at all for the novice, who never walks over them. It made the
+game easier for the people already winning and was reverted. Upgrades buy the margin
 back rather than starting with it: at `drill=2,tank=2,hull=2` competent play
 clears 37/40, and the straight dig starts surviving occasionally rather than
 never. (The last two numbers used to read "one in twelve" and "more often than
@@ -363,7 +390,7 @@ several times a second.
 ## Balance tooling
 
 ```bash
-node tools/sim.mjs 60                  # whole descents, headless, three policies
+node tools/sim.mjs 60                  # whole descents, headless, four policies
 node tools/sim.mjs 60 drill=2,hull=2   # ... at a given upgrade level
 node tools/sim.mjs 60 drill=5 9        # ... on the 10th planet
 node tools/sim.mjs 60 detour=9         # ... prospecting further off the shaft
@@ -371,9 +398,11 @@ node tools/supply.mjs 200              # is the deep game still supplyable?
 node tools/census.mjs 20               # what a generated world actually contains
 ```
 
-The three policies are ascending greed: `beeline` digs straight down and ignores
-everything, `greedy` manages fuel, hull and heat but walks past every vein in the
-world, and `prospector` also detours for ore up to `detour` tiles off its shaft.
+The four policies are ascending competence, not just greed. `beeline` digs
+straight down and ignores everything; `novice` grabs what is close once it is
+already hurting and reacts to the redline rather than pacing it; `greedy`
+manages fuel, hull and heat but walks past every vein in the world; and
+`prospector` also detours for ore up to `detour` tiles off its shaft.
 The third one exists because the first two free about nine ore in a whole run and
 so never fill a sixteen-slot bay -- measuring the cargo limit against them would
 have reported, correctly but uselessly, that it does nothing.

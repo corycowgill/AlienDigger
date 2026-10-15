@@ -364,6 +364,21 @@ as at 60.
 
 ## Look
 
+Each stratum has its own air. Embers climb out of the magma, spores drift up
+through the fungal caverns, frost falls through the ice shelf, dust hangs in the
+dirt -- a few dozen specks in world space, tinted and moving the way that layer
+should, so a layer is a place you are in rather than a texture you drill
+through. It is a fixed pool recycled forever, so it allocates nothing per frame
+and costs the same at 200m as at 2m: measured at 0.27ms a frame against the
+0.38ms the rest of the game takes.
+
+Which side of the darkness a speck is drawn on is the whole trick. Dust is lit
+by the drill's lamp and dims with everything else; an ember, a spore, a crystal
+glint and frost catching the light make their own, so they are drawn over the
+depth shadow and punch through it. Drawn uniformly under it, the magma chamber
+-- the one place most in need of atmosphere -- looked exactly as still as
+before, because 0.34 alpha under an 0.82 black is nothing at all.
+
 Open space takes a shadow along every edge it shares with rock, so a shaft you
 cut reads as carved rather than as an absence where the background shows
 through. The drill carries its own light and the dark closes in with depth. Tile variants

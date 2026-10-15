@@ -9,6 +9,7 @@ import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyH
 import { updateLaser, laserReady, LASER } from './laser.js';
 import { createFx } from './fx.js';
 import { createFloaters } from './floaters.js';
+import { createMotes } from './motes.js';
 import { drawHud, drawBanner } from './hud.js';
 import { createTitle } from './title.js';
 import { createFoundry } from './foundry.js';
@@ -64,6 +65,7 @@ boot.remove();
 const input = createInput();
 const fx = createFx(assets);
 const floaters = createFloaters();
+const motes = createMotes(CW, CH - VIEW_TOP);
 const ORE_TINT = ['#e07a2b', '#d8dbe6', '#a77ff0', '#e8b02b', '#39d7e8'];
 const ORE_NAMES = ['Cu', 'Ir', 'Vd', 'Am', 'Pc'];
 const lastMinerals = [0, 0, 0, 0, 0];
@@ -106,6 +108,7 @@ function reset(seed = Date.now() & 0xffff) {
   audio.drill(false);
   fx.clear();
   floaters.clear();
+  motes.clear();   // a new planet does not inherit the last one's air
   tips.clear();
   lastMinerals.fill(0);
   cam = { x: 0, y: 0 };
@@ -1455,6 +1458,7 @@ function update(dt) {
   state.shake = Math.max(0, state.shake - dt * 3.4);
   fx.update(dt);
   floaters.update(dt);
+  motes.update(dt, cam, player.ty);
   tips.update(dt);
 
   // camera trails the drill, clamped to the world
@@ -1499,11 +1503,14 @@ function render() {
   }
   drawBackground();
   drawTerrain();
+  motes.draw(ctx, cam, player.ty, VIEW_TOP, false);   // dust, lit by the lamp
   drawEntities();
   drawPlayer();
   drawBeam();
   fx.draw(ctx, cam);
   drawLight();
+  // Embers, spores and glints make their own light, so they go over the dark.
+  motes.draw(ctx, cam, player.ty, VIEW_TOP, true);
   drawBossGlow();
   // After the darkness, so the flood lights the shaft rather than being dimmed
   // by it -- the one thing down there that should be impossible to miss.

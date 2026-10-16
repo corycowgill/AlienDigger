@@ -16,7 +16,7 @@ const WARN = '#ff6b5b';
 // bay needed a home.
 const LEFT = [
   {
-    head: 'THE JOB', color: TRIM,
+    head: 'THE JOB', color: TRIM, icon: ['props', 'charge', 0],
     lines: [
       'Drill down to the planetary core,',
       'plant three fusion charges, then',
@@ -24,7 +24,7 @@ const LEFT = [
     ],
   },
   {
-    head: 'FUEL IS THE CLOCK', color: GOLD,
+    head: 'FUEL IS THE CLOCK', color: GOLD, icon: ['minerals', 'pickup', 1],
     lines: [
       'Drilling burns fuel fast; coasting',
       'burns it slowly. A full tank is about',
@@ -33,7 +33,7 @@ const LEFT = [
     ],
   },
   {
-    head: 'HEAT IS THE PACE', color: '#ff8c3a',
+    head: 'HEAT IS THE PACE', color: '#ff8c3a', icon: ['heat', 'tipcrit', 3],
     lines: [
       'Deep rock heats the bit; redline it and',
       'it eats hull. Stop cutting and it sheds',
@@ -41,7 +41,7 @@ const LEFT = [
     ],
   },
   {
-    head: 'READ THE ROCK', color: INK,
+    head: 'READ THE ROCK', color: INK, icon: ['minerals', 'pickup', 0],
     lines: [
       'Each stratum is harder and hotter.',
       'Buried in the rock: fuel, repairs,',
@@ -50,7 +50,7 @@ const LEFT = [
     ],
   },
   {
-    head: 'THE BAY IS FINITE', color: '#c19a5b',
+    head: 'THE BAY IS FINITE', color: '#c19a5b', icon: ['minerals', 'gem', 2],
     lines: [
       'Each ore takes one slot whatever its',
       'tier. DUMP sheds the cheapest behind',
@@ -62,7 +62,7 @@ const LEFT = [
 
 const RIGHT = [
   {
-    head: 'WHAT IS DOWN THERE', color: WARN,
+    head: 'WHAT IS DOWN THERE', color: WARN, icon: ['aliens', 'lurker', 0],
     lines: [
       'Hazards are sealed in the rock. A tile',
       'FLASHES RED before you break in. Each',
@@ -74,7 +74,7 @@ const RIGHT = [
     ],
   },
   {
-    head: 'VEINS ARE THE PAYDAY', color: '#7a4fd6',
+    head: 'VEINS ARE THE PAYDAY', color: '#7a4fd6', icon: ['minerals', 'ore', 4],
     lines: [
       'Ore clusters into veins you can see in',
       'the rock. The rich ones sit deep and',
@@ -83,7 +83,7 @@ const RIGHT = [
     ],
   },
   {
-    head: 'THE CORE', color: TRIM,
+    head: 'THE CORE', color: TRIM, icon: ['boss', 'exposed', 1],
     lines: [
       'The Guardian blocks the charges: ARMOURED',
       'shrugs off ramming, OPEN is your window,',
@@ -94,7 +94,7 @@ const RIGHT = [
     ],
   },
   {
-    head: 'THE FOUNDRY', color: GOLD,
+    head: 'THE FOUNDRY', color: GOLD, icon: ['upg', 'upgdrill', 4],
     lines: [
       'Minerals bank as credits: all of them',
       'if the planet cracks, 40% if you die.',
@@ -136,13 +136,13 @@ export function createHelp() {
       ctx.fillRect(0, 0, cw, ch);
       const strip = assets.bg[assets.backgrounds[2]];
       if (strip) {
-        ctx.globalAlpha = 0.22;
+        ctx.globalAlpha = 0.34;
         const scale = Math.max(cw / strip.width, ch / strip.height);
         ctx.drawImage(strip, 0, Math.round(ch - strip.height * scale),
                       Math.ceil(strip.width * scale), Math.ceil(strip.height * scale));
         ctx.globalAlpha = 1;
       }
-      ctx.fillStyle = 'rgba(13,10,20,0.8)';
+      ctx.fillStyle = 'rgba(13,10,20,0.74)';
       ctx.fillRect(0, 0, cw, ch);
 
       ctx.textAlign = 'center';
@@ -150,22 +150,40 @@ export function createHelp() {
       ctx.font = 'bold 22px ui-monospace, monospace';
       ctx.fillText('HOW TO PLAY', cw / 2, 38);
 
+      // An icon per section, from the art the game already ships. This screen
+      // was a wall of text in a game with seventeen sprite sheets -- the
+      // pictures do more for finding the paragraph you want than any amount of
+      // rewording would.
+      const pick = (path) => {
+        if (!path) return null;
+        const row = assets?.anim?.[path[0]]?.[path[1]];
+        return row && row[Math.min(path[2], row.length - 1)];
+      };
+      const ICON = 22;
+
       ctx.textAlign = 'left';
       const col = (sections, x) => {
         let y = 68;
         for (const s of sections) {
+          const img = pick(s.icon);
+          if (img) {
+            const k = Math.min(ICON / img.width, ICON / img.height);
+            const w = Math.round(img.width * k), h = Math.round(img.height * k);
+            ctx.drawImage(img, x + Math.round((ICON - w) / 2),
+                          Math.round(y - 11 + (ICON - h) / 2), w, h);
+          }
           ctx.fillStyle = s.color;
           ctx.font = 'bold 12px ui-monospace, monospace';
-          ctx.fillText(s.head, x, y);
+          ctx.fillText(s.head, x + ICON + 8, y);
           y += 15;
           ctx.fillStyle = DIM;
           ctx.font = '11px ui-monospace, monospace';
-          for (const line of s.lines) { ctx.fillText(line, x, y); y += 13; }
+          for (const line of s.lines) { ctx.fillText(line, x + ICON + 8, y); y += 13; }
           y += 12;
         }
       };
-      col(LEFT, 60);
-      col(RIGHT, cw / 2 + 20);
+      col(LEFT, 42);
+      col(RIGHT, cw / 2 + 4);
 
       // The one sentence that answers "how do I win", set apart so it is not
       // just another bullet in a wall of them.

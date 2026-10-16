@@ -343,6 +343,23 @@ The repo is a static site with nothing to build, so any static host works. On
 Each stratum names itself as you break into it -- ICE, 80m, runs cold -- so the
 descent has waypoints rather than only a rising number.
 
+## The screens
+
+The title, the Foundry and the help page are drawn with the same primitives the
+HUD is, so they stay crisp at any canvas size -- but they were the last part of
+the game still made entirely of text. The help page in particular was a wall of
+it in a game carrying seventeen sprite sheets, so each section now leads with
+the thing it is about: a fusion charge, a fuel can, a red-hot bit, a lurker, the
+Guardian. The pictures do more for finding the paragraph you want than any
+amount of rewording would.
+
+Two layout bugs came out of looking at them properly. The title scaled its
+background to `ch - viewTop` -- the HUD's height, on a screen with no HUD --
+which left a black band across the top eighth of the first thing anyone ever
+sees. And the Foundry's upgrade rows put the blurb's baseline exactly on the
+panel border after the rows were shortened to make room for the planet cards,
+so the frame cut through the descenders of every line.
+
 ## Teaching
 
 Six first-time hints fire the moment the thing they explain is actually

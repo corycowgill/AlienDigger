@@ -33,7 +33,10 @@ export function createTitle(assets, coarse, save) {
     draw(ctx, cw, ch, viewTop, pad) {
       const strip = assets.bg[assets.backgrounds[3]];
       if (strip) {
-        const scale = Math.max(cw / strip.width, (ch - viewTop) / strip.height);
+        // Cover the whole canvas, not `ch - viewTop`. That subtraction is the
+        // HUD's height, and the title screen has no HUD -- so it left a black
+        // band across the top eighth of the first thing anyone ever sees.
+        const scale = Math.max(cw / strip.width, ch / strip.height);
         const w = strip.width * scale, h = strip.height * scale;
         const drift = (this.t * 8) % w;
         for (let x = -drift; x < cw; x += w) {
@@ -41,6 +44,30 @@ export function createTitle(assets, coarse, save) {
         }
       }
       ctx.fillStyle = 'rgba(13,10,20,0.62)';
+      ctx.fillRect(0, 0, cw, ch);
+
+      // Embers climbing out of the magma strip, the same air the magma layer
+      // has in game. The title was the one place the planet looked inert.
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 26; i++) {
+        // Deterministic per index, so they drift rather than flicker: each
+        // ember has its own speed, column and phase derived from i alone.
+        const sp = 14 + (i % 7) * 5;
+        const x = ((i * 137) % cw + Math.sin(this.t * 0.6 + i) * 18 + cw) % cw;
+        const y = ch - ((this.t * sp + i * 97) % (ch + 40)) + 20;
+        const a = 0.22 + 0.3 * (0.5 + 0.5 * Math.sin(this.t * 2 + i * 1.7));
+        ctx.fillStyle = `rgba(255,154,60,${a.toFixed(2)})`;
+        ctx.fillRect(Math.round(x), Math.round(y), 2, 2 + (i % 2));
+      }
+      ctx.restore();
+
+      // A soft vignette so the plate reads against a busy magma field.
+      const vig = ctx.createRadialGradient(cw / 2, ch * 0.4, ch * 0.2,
+                                           cw / 2, ch * 0.4, ch * 0.9);
+      vig.addColorStop(0, 'rgba(13,10,20,0)');
+      vig.addColorStop(1, 'rgba(13,10,20,0.75)');
+      ctx.fillStyle = vig;
       ctx.fillRect(0, 0, cw, ch);
 
       const logo = assets.logo;

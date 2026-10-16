@@ -88,13 +88,13 @@ export function createFoundry(save) {
 
       const strip = assets.bg[assets.backgrounds[1]];
       if (strip) {
-        ctx.globalAlpha = 0.3;
+        ctx.globalAlpha = 0.42;
         const scale = Math.max(cw / strip.width, ch / strip.height);
         ctx.drawImage(strip, 0, Math.round(ch - strip.height * scale),
                       Math.ceil(strip.width * scale), Math.ceil(strip.height * scale));
         ctx.globalAlpha = 1;
       }
-      ctx.fillStyle = 'rgba(13,10,20,0.72)';
+      ctx.fillStyle = 'rgba(13,10,20,0.66)';
       ctx.fillRect(0, 0, cw, ch);
 
       ctx.textAlign = 'center';
@@ -161,10 +161,10 @@ export function createFoundry(save) {
         const afford = cost !== null && save.credits >= cost;
 
         ctx.fillStyle = picked ? 'rgba(47,210,232,0.13)' : PANEL;
-        ctx.fillRect(x0, y, panelW, rowH - 8);
+        ctx.fillRect(x0, y, panelW, rowH - 6);
         ctx.strokeStyle = picked ? TRIM : '#2b2438';
         ctx.lineWidth = picked ? 2 : 1;
-        ctx.strokeRect(x0 + 0.5, y + 0.5, panelW - 1, rowH - 9);
+        ctx.strokeRect(x0 + 0.5, y + 0.5, panelW - 1, rowH - 7);
 
         // The part itself, so an upgrade is a thing you can see rather than a
         // row of pips. The row shows what you currently fly with; at level 0 it
@@ -174,7 +174,7 @@ export function createFoundry(save) {
         if (art && art.length) {
           const img = art[Math.max(0, Math.min(art.length - 1, lvl - 1))];
           if (img) {
-            const box = rowH - 16;
+            const box = rowH - 14;
             const k = Math.min(box / img.width, box / img.height);
             const iw = Math.round(img.width * k), ih = Math.round(img.height * k);
             ctx.save();
@@ -188,25 +188,25 @@ export function createFoundry(save) {
         ctx.textAlign = 'left';
         ctx.font = 'bold 13px ui-monospace, monospace';
         ctx.fillStyle = picked ? INK : DIM;
-        ctx.fillText(u.name, x0 + 60, y + 19);
+        ctx.fillText(u.name, x0 + 60, y + 17);
         ctx.font = '11px ui-monospace, monospace';
         ctx.fillStyle = '#6f6883';
-        ctx.fillText(u.blurb, x0 + 60, y + 34);
+        ctx.fillText(u.blurb, x0 + 60, y + 31);
 
         // level pips
         for (let k = 0; k < u.max; k++) {
           ctx.fillStyle = k < lvl ? TRIM : '#2b2438';
-          ctx.fillRect(x0 + 330 + k * 16, y + 10, 11, 11);
+          ctx.fillRect(x0 + 330 + k * 16, y + 11, 11, 11);
         }
 
         ctx.textAlign = 'right';
         ctx.font = 'bold 13px ui-monospace, monospace';
         if (cost === null) {
           ctx.fillStyle = TRIM;
-          ctx.fillText('MAX', x0 + panelW - 16, y + 26);
+          ctx.fillText('MAX', x0 + panelW - 16, y + 24);
         } else {
           ctx.fillStyle = afford ? GOLD : '#5b4a2a';
-          ctx.fillText(`${cost} CR`, x0 + panelW - 16, y + 26);
+          ctx.fillText(`${cost} CR`, x0 + panelW - 16, y + 24);
         }
       });
 

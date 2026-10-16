@@ -22,9 +22,9 @@ headers, so a browser will happily pair a *new* `main.js` with a *stale*
 `audio.js` and throw "X is not a function" -- which looks exactly like a bug in
 the code you just wrote. That cost this project an afternoon more than once.
 
-**Keyboard** — `WASD` / arrow keys to drill, `E` to plant a charge, `F` (or `Q`)
-to fire the laser, `G` to dump the cheapest ore aboard (hold to repeat), `R` to
-restart.
+**Keyboard** — `WASD` / arrow keys to drill, **hold** `E` to arm a charge, `F`
+(or `Q`) to fire the laser, `G` to dump the cheapest ore aboard (hold to
+repeat), `R` to restart.
 Hold two directions to cut a diagonal: it costs √2 as much to drill and to
 cross, so a staircase is never a cheaper way straight down, only a cheaper way
 sideways.
@@ -145,8 +145,15 @@ bigger haul. That trade is the decision a run is actually about; the background
 scatter is just what you pick up on the way past.
 
 Buried in the rock alongside fuel and repairs: coolant that dumps all heat, a
-shield that eats hits for a few seconds, and a bit overdrive. The Core Guardian has to be brought down before the
-charges will arm, and it runs a cycle worth reading: its plating shrugs off
+shield that eats hits for a few seconds, and a bit overdrive. Arming a charge is a hold rather than a tap, and it
+roots the drill for a second and a half while the ring closes. It used to be
+three free button presses after the Guardian was already dead -- the pivotal
+moment of a twenty-minute run, and the chamber's sentries and lava vents did
+not matter because nothing ever made you stand still in there. Now they do:
+clear the room first, or arm under fire and take it. Moving aborts the channel,
+which is the way out of a slam; damage does not, because being interrupted
+*and* hurt is two punishments for one mistake. The Core Guardian still has to
+be brought down before the charges will arm, and it runs a cycle worth reading: its plating shrugs off
 ramming, it opens for a window worth committing to, and it telegraphs a slam
 with a ring you want to be outside. A bar over its head shows which.
 

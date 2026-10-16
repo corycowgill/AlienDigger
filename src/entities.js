@@ -664,6 +664,46 @@ export function runTremor(world, player, panic, rand = Math.random, onRock) {
   return dropped;
 }
 
+// ---------------------------------------------------------------- planting
+// Arming a charge takes time and holds the drill still while it does.
+//
+// It used to be a tap. The pivotal moment of a twenty-minute run -- the point
+// of no return, the thing the whole descent is for -- was three free button
+// presses after the Guardian was already dead. The chamber has a sentry short
+// of every socket and a lava vent between them, and none of that mattered
+// because nothing made you stand anywhere.
+//
+// Now it does. Holding still for a second and a half beside a rock crab is a
+// real decision about whether to clear the room first. Damage does not cancel
+// the channel -- being interrupted *and* hurt is two punishments for one
+// mistake, and it would make the chamber guards feel like a slot machine.
+// Moving cancels it, because that is the cost being paid.
+export const PLANT_TIME = 1.4;
+
+// Returns 'done' on the frame it completes, 'arming' while it runs, or null.
+export function armCharge(player, socket, holding, dt) {
+  // Moving aborts it. That is the player's escape hatch as much as the cost:
+  // a slam winding up is a good reason to walk away and start again, and
+  // taking that option away would make the channel a trap rather than a
+  // decision.
+  if (!socket || player.charges <= 0 || !holding || player.moving || player.dead) {
+    player.arming = null;
+    return null;
+  }
+  // A different socket restarts the clock, so you cannot bank progress on one
+  // and spend it on another.
+  if (!player.arming || player.arming.x !== socket.x || player.arming.y !== socket.y) {
+    player.arming = { x: socket.x, y: socket.y, t: 0 };
+  }
+  player.arming.t += dt;
+  if (player.arming.t < PLANT_TIME) return 'arming';
+  player.arming = null;
+  socket.planted = true;
+  player.charges--;
+  player.planted++;
+  return 'done';
+}
+
 // ------------------------------------------------------------------- lava
 // Once the charges are armed the core floods and the lava climbs the shaft
 // behind you. The escape already had a deadline; what it did not have was a

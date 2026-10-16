@@ -65,13 +65,12 @@ const RIGHT = [
     head: 'WHAT IS DOWN THERE', color: WARN,
     lines: [
       'Hazards are sealed in the rock. A tile',
-      'FLASHES RED before you break in - back',
-      'off, or eat it. Each alien has its own',
-      "answer: a crab's shell only covers the",
-      'way it FACES, so take its flank; a',
-      'spitter is OPEN just after it fires; a',
-      'lurker COILS before it bolts; worms',
-      'come through walls. Ram, or LASER.',
+      'FLASHES RED before you break in. Each',
+      "alien has its own answer: a crab's shell",
+      'only covers the way it FACES; a spitter',
+      'is OPEN just after it fires; a lurker',
+      'COILS before it bolts; worms come',
+      'through walls. Ram them, or LASER them.',
     ],
   },
   {
@@ -86,13 +85,12 @@ const RIGHT = [
   {
     head: 'THE CORE', color: TRIM,
     lines: [
-      'The Guardian blocks the charges. Watch',
-      'the bar over its head: ARMOURED shrugs',
-      'off ramming, OPEN is your window, and',
-      'SLAM INCOMING means clear the ring.',
-      'Once armed, tremors drop rubble into',
-      'the shaft above - including over ore',
-      'you left. It cuts easily; the clock runs.',
+      'The Guardian blocks the charges: ARMOURED',
+      'shrugs off ramming, OPEN is your window,',
+      'SLAM means clear the ring. Arming a',
+      'charge is a HOLD that roots you, so clear',
+      'the sentries first. Then the core floods',
+      'and tremors drop rubble down the shaft.',
     ],
   },
   {
@@ -108,18 +106,18 @@ const RIGHT = [
 function controlsFor(coarse, pad) {
   if (pad) {
     return ['Stick / d-pad  drill (hold two for a diagonal)',
-            '(A) plant charge and install    (B / RT) laser',
+            '(A) hold to arm a charge, tap to install    (B/RT) laser',
             '(RB) dump cheapest ore    (Y) restart    (LB) sound'];
   }
   if (coarse) {
     return ['D-pad  drill (press two for a diagonal)',
-            'PLANT  plant charge and install    FIRE  laser',
+            'PLANT  hold to arm a charge    FIRE  laser',
             'DUMP  dump cheapest ore    RESTART    SOUND'];
   }
   // Three lines in every scheme: the block is drawn at a fixed offset from the
   // bottom and a fourth line runs into the "press any key" prompt.
   return ['WASD / arrows  drill (hold two for a diagonal)',
-          'E  plant and install    F  laser    G  dump ore',
+          'E  hold to arm a charge    F  laser    G  dump ore',
           'R  restart    M  sound    H  this screen'];
 }
 

@@ -121,6 +121,23 @@ export function createInput() {
         requestAnimationFrame(() => release(btn.dataset.tap));
       });
     }
+
+    // Hold buttons stay down until the finger leaves. PLANT needs this: arming
+    // a charge is a channel, and a button that releases itself on the next
+    // frame can never finish one.
+    for (const btn of document.querySelectorAll('#touch [data-hold]')) {
+      const act = btn.dataset.hold;
+      const down = (e) => {
+        e.preventDefault();
+        press(act);
+        try { btn.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
+      };
+      const up = (e) => { e.preventDefault(); release(act); };
+      btn.addEventListener('pointerdown', down);
+      btn.addEventListener('pointerup', up);
+      btn.addEventListener('pointercancel', up);
+      btn.addEventListener('pointerleave', up);
+    }
   }
 
   if (document.readyState === 'loading') {

@@ -11,7 +11,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { W, D, CORE_TOP, EMPTY, STRATA, World, rng, strataAt } from '../src/world.js';
 import { populate, collectOre, hitScale, updateAliens, ALIEN_KINDS, HAZARD_KINDS, PICKUPS,
-         VENT_TIME, VENT_BONUS, COIL_TIME, lavaLevel, lavaBurn, LAVA, DEATH_OF, staggerOf, guardRage, guardReach, guardPhaseTime, GUARD_PHASE } from '../src/entities.js';
+         VENT_TIME, VENT_BONUS, COIL_TIME, lavaLevel, lavaBurn, LAVA, DEATH_OF, staggerOf, guardRage, guardReach, guardPhaseTime, GUARD_PHASE, armCharge, PLANT_TIME } from '../src/entities.js';
 import { createPlayer, cargoUsed, cargoRoom, stowOre, dumpOre } from '../src/player.js';
 import { statsFor, difficultyFor, UPGRADES, PLANET_TYPES, planetType, offeredPlanets } from '../src/progress.js';
 
@@ -288,6 +288,63 @@ console.log('\nlava');
   const tight = difficultyFor(999).escape;
   check('it still reaches the surface on the hardest planet',
         lavaLevel(0, tight) <= 3, `${tight}s window`);
+}
+
+// --------------------------------------------------------------- planting
+// Arming is the point of no return and it now roots the drill while it runs.
+// Every one of these is a way for that to become either free or a trap.
+console.log('\nplanting');
+{
+  const mk = () => {
+    const p = createPlayer({});
+    p.tx = 10; p.ty = 190; p.charges = 3; p.planted = 0;
+    return p;
+  };
+  const sock = () => ({ x: 10, y: 190, planted: false });
+
+  // It must take real time, not complete on the first frame.
+  let p = mk(), k = sock();
+  check('one frame does not arm a charge',
+        armCharge(p, k, true, 1 / 60) === 'arming' && !k.planted);
+
+  // ...and it must actually finish.
+  let frames = 0;
+  while (armCharge(p, k, true, 1 / 60) === 'arming' && frames++ < 600) { /* hold */ }
+  check('holding arms it', k.planted && p.planted === 1 && p.charges === 2,
+        `${(frames / 60).toFixed(2)}s`);
+  check('it takes about the advertised time',
+        Math.abs(frames / 60 - PLANT_TIME) < 0.1, `${PLANT_TIME}s advertised`);
+
+  // Letting go loses the progress -- otherwise it is a tap with extra steps.
+  p = mk(); k = sock();
+  for (let i = 0; i < 40; i++) armCharge(p, k, true, 1 / 60);
+  armCharge(p, k, false, 1 / 60);
+  check('releasing abandons the progress', p.arming === null && !k.planted);
+
+  // Moving aborts it, which is the player's way out of a slam.
+  p = mk(); k = sock();
+  for (let i = 0; i < 40; i++) armCharge(p, k, true, 1 / 60);
+  p.moving = { t: 0 };
+  armCharge(p, k, true, 1 / 60);
+  check('moving aborts it', p.arming === null && !k.planted);
+
+  // Progress cannot be banked on one socket and spent on another.
+  p = mk();
+  const a1 = sock(), a2 = { x: 16, y: 190, planted: false };
+  for (let i = 0; i < 70; i++) armCharge(p, a1, true, 1 / 60);
+  armCharge(p, a2, true, 1 / 60);
+  check('switching sockets restarts the clock',
+        p.arming && p.arming.x === 16 && p.arming.t < 0.05);
+
+  // A dead drill arms nothing, and neither does one out of charges.
+  p = mk(); p.dead = true;
+  check('a dead drill arms nothing', armCharge(p, sock(), true, 1) === null);
+  p = mk(); p.charges = 0;
+  check('no charges, no arming', armCharge(p, sock(), true, 1) === null);
+
+  // It has to stay short enough to be a decision rather than a sentence.
+  check('the channel is short enough to commit to',
+        PLANT_TIME > 0.5 && PLANT_TIME <= 2.5, `${PLANT_TIME}s`);
 }
 
 // --------------------------------------------------------------- guardian

@@ -5,7 +5,7 @@ import { loadAssets } from './assets.js';
 import { createInput } from './input.js';
 import { TILE, W, D, CORE_TOP, EMPTY, STRATA, World, rng, strataAt } from './world.js';
 import { createPlayer, updatePlayer, damage, cargoUsed, cargoRoom, stowOre, dumpOre } from './player.js';
-import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup, collectOre, runTremor, TREMOR, COIL_TIME, lavaLevel, lavaBurn, LAVA, leechSteal, dropLoot, splitBrood, hazardArmed, DEATH_OF, staggerOf, SCORCH_FOR, guardRage, guardReach, guardPhaseTime } from './entities.js';
+import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup, collectOre, runTremor, TREMOR, COIL_TIME, lavaLevel, lavaBurn, LAVA, leechSteal, dropLoot, splitBrood, hazardArmed, DEATH_OF, staggerOf, SCORCH_FOR, guardRage, guardReach, guardPhaseTime, armCharge, PLANT_TIME } from './entities.js';
 import { updateLaser, laserReady, LASER } from './laser.js';
 import { createFx } from './fx.js';
 import { createFloaters } from './floaters.js';
@@ -635,6 +635,28 @@ function drawEntities() {
     const frames = assets.anim.props[row];
     const img = s.planted ? frameOf(frames, state.time, 10) : (frames && frames[0]);
     drawSprite(img, s.x * TILE, s.y * TILE, TILE * 1.4);
+
+    // The arming ring. A hold with no visible clock is just an unresponsive
+    // button, so this closes as the charge seats -- and it is drawn on the
+    // socket rather than the drill, because the socket is what the player is
+    // watching and what they must not walk away from.
+    const arm = player.arming;
+    if (arm && arm.x === s.x && arm.y === s.y) {
+      const k = Math.min(1, arm.t / PLANT_TIME);
+      const cx = s.x * TILE + TILE / 2 - cam.x;
+      const cy = s.y * TILE + TILE / 2 - cam.y;
+      ctx.save();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(47,210,232,0.22)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, TILE * 0.95, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = '#2fd2e8';
+      ctx.beginPath();
+      ctx.arc(cx, cy, TILE * 0.95, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
   for (const a of aliens) {
     if (a.hp <= 0 || Math.abs(a.y - player.ty) > 22) continue;
@@ -1256,13 +1278,26 @@ function update(dt) {
     else audio.ore();
   });
 
+  // Arming a charge is a hold, not a tap -- see armCharge. The chamber's
+  // guards finally matter because something makes you stand still in it.
   const socket = nearestSocket();
-  if (socket && player.charges > 0 && input.tapped('plant')) {
-    socket.planted = true;
-    player.charges--;
-    player.planted++;
+  const arming = armCharge(player, socket, input.held('plant'), dt);
+  if (arming === 'arming') {
+    // A tick per quarter turn of the ring, so the wait is audible as progress
+    // rather than as nothing happening.
+    state.armTick = (state.armTick || 0) - dt;
+    if (state.armTick <= 0) {
+      state.armTick = PLANT_TIME / 4;
+      audio.warn();
+      fx.spawn('sparks', socket.x * TILE + 16, socket.y * TILE + 16, 0.5);
+    }
+  } else if (arming === 'done') {
     fx.spawn('flash', socket.x * TILE + 16, socket.y * TILE + 16);
+    fx.spawn('shockwave', socket.x * TILE + 16, socket.y * TILE + 16, 1.2);
     audio.plant();
+    state.shake = Math.max(state.shake, 0.4);
+    floaters.push(`CHARGE ${player.planted}/3 ARMED`,
+                  socket.x * TILE + 16, socket.y * TILE, '#39d7e8');
     if (player.planted === 3) {
       state.escaping = true;
       state.escapeLeft = diff.escape;
@@ -1536,7 +1571,10 @@ function render() {
            : g && g.phase === 'windup' ? 'GET CLEAR'
            : 'WAIT FOR THE GUARDIAN TO OPEN UP';
     }
-    else if (socket && player.charges > 0) hint = pad ? '(A) PLANT CHARGE' : '[E] PLANT CHARGE';
+    else if (socket && player.charges > 0) {
+      hint = player.arming ? 'HOLD IT - DO NOT MOVE'
+           : pad ? 'HOLD (A) TO ARM THE CHARGE' : 'HOLD [E] TO ARM THE CHARGE';
+    }
     if (hint) {
       ctx.fillStyle = guardianAlive() ? '#ff6b5b' : '#39d7e8';
       ctx.font = '13px ui-monospace, monospace';

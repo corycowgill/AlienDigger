@@ -16,7 +16,7 @@
 
 import { TILE, W, D, CORE_TOP, EMPTY, World, STRATA, strataAt, rng } from '../src/world.js';
 import { createPlayer, updatePlayer, damage, cargoUsed, cargoRoom, dumpOre } from '../src/player.js';
-import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup, collectOre, runTremor, TREMOR, lavaLevel, lavaBurn, leechSteal } from '../src/entities.js';
+import { populate, updateAliens, updateHazards, updatePickups, ramAliens, applyHazard, applyPickup, collectOre, runTremor, TREMOR, lavaLevel, lavaBurn, leechSteal, armCharge } from '../src/entities.js';
 import { statsFor, difficultyFor, valueOf, planetType } from '../src/progress.js';
 
 const DT = 1 / 60;
@@ -98,6 +98,7 @@ function run(seed, policy, levels = {}, planet = 0, type = 'rocky') {
   let dumps = 0, fullAt = 0, dumpT = 0;
   let lavaSecs = 0, lavaGap = Infinity;
   let stolen = 0;
+  let armSecs = 0;
 
   // A competent player does not haul copper out of the magma layer. Once the
   // bay is full, the cheapest ore aboard is worth less than the slot it is
@@ -249,10 +250,36 @@ function run(seed, policy, levels = {}, planet = 0, type = 'rocky') {
       } else if (Math.abs(socket.y - player.ty) > 1) {
         dir = socket.y < player.ty ? 'up' : 'down';
       } else {
-        socket.planted = true;
-        player.charges--; player.planted++;
+        // Arming is a hold now, so the policy has to stand in the chamber for
+        // it and eat whatever the guards do meanwhile. Planting instantly here
+        // would report a game where the channel costs nothing.
         dir = null;
-        if (player.planted === 3) { phase = 'escape'; log.reachedCore = true; escapeStart = t; }
+        input.set(null);
+        const got = armCharge(player, socket, true, DT);
+        updatePlayer(player, world, input, DT, noFx);
+        updateAliens(aliens, world, player, DT, (a) => {
+          if (a.hp <= 0 || a.kind.steals) return;
+          if (damage(player, a.kind.dmg, noFx)) { hits++; alienHits++; alienDmg += a.kind.dmg; chamberHits++; }
+          else blockedHits++;
+        }, (a) => {
+          if (damage(player, a.kind.spitDmg, noFx)) { hits++; spitHits++; alienDmg += a.kind.spitDmg; chamberHits++; }
+        }, (a, reach) => {
+          if (reach && damage(player, a.kind.slam, noFx)) { hits++; alienDmg += a.kind.slam; chamberHits++; }
+        });
+        updateHazards(hazards, player, DT, (h) => {
+          const r = applyHazard(h, player, world, noFx);
+          if (typeof r === 'number') { hits++; hazHits++; hazDmg += r; chamberHits++; }
+        });
+        armSecs += DT;
+        if (player.dead) {
+          log.deathFuel = Math.round(player.fuel); log.deathPhase = 'plant'; log.deathDepth = player.ty;
+          break;
+        }
+        if (got === 'done' && player.planted === 3) {
+          phase = 'escape'; log.reachedCore = true; escapeStart = t;
+        }
+        t += DT;
+        continue;
       }
     } else {
       // Climb the shaft that was already dug rather than boring a fresh one.
@@ -349,6 +376,7 @@ function run(seed, policy, levels = {}, planet = 0, type = 'rocky') {
     dumps,
     fullAt,
     stolen,
+    armSecs: +armSecs.toFixed(1),
     lavaSecs: +lavaSecs.toFixed(1),
     lavaGap: lavaGap === Infinity ? null : Math.round(lavaGap),
     looseLeft,
@@ -437,7 +465,8 @@ for (const policy of ['beeline', 'novice', 'greedy', 'prospector']) {
     console.log(`  lava: closest ${(lav.reduce((a, r) => a + r.lavaGap, 0) / lav.length).toFixed(1)} tiles below   `
               + `touched it in ${caught}/${runs}   burned for ${avg((r) => r.lavaSecs)}s`);
   }
-  console.log(`  ore stolen by leeches: ${avg((r) => r.stolen)} units`);
+  console.log(`  ore stolen by leeches: ${avg((r) => r.stolen)} units   `
+            + `seconds spent arming: ${avg((r) => r.armSecs)}`);
   console.log(`  haul: ${avg((r) => r.gross)} CR gross -> ${avg((r) => r.banked)} CR banked   `
             + `left lying in the shaft: ${avg((r) => r.looseLeft)} units`);
   const dead = results.filter((r) => r.dead);
